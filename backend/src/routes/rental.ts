@@ -3,7 +3,7 @@ import { config } from "../config";
 import { pool } from "../db";
 import { requireRole } from "../middleware/auth";
 import { createOrder, isValidRazorpaySignature, paymentInfo } from "../payments";
-import { generateInvoices, INVOICE_SELECT, toInvoice } from "../rental";
+import { generateInvoices, INVOICE_SELECT, loadTiers, toInvoice } from "../rental";
 import { parseId } from "../spaces";
 
 // /owner/rental — a space owner's rental invoices and paying them.
@@ -18,7 +18,8 @@ async function findInvoice(id: number | null, ownerId: number) {
   return rows[0] ?? null;
 }
 
-// GET /owner/rental — every invoice for the owner's spaces, newest month first.
+// GET /owner/rental — the fee tiers, and every invoice for the owner's spaces,
+// newest month first.
 rentalRouter.get("/", async (req, res) => {
   await generateInvoices();
   const { rows } = await pool.query(
@@ -27,6 +28,8 @@ rentalRouter.get("/", async (req, res) => {
   );
   const unpaid = rows.filter((row) => row.status === "due");
   res.json({
+    tiers: await loadTiers(),
+    due_day: config.rentalDueDay,
     invoices: rows.map(toInvoice),
     summary: {
       due_count: unpaid.length,
