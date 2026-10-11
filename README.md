@@ -78,3 +78,8 @@ Open http://localhost:3000. To check that the frontend reaches the API and the d
 cd backend && npm run build                    # type-checks and compiles the API
 cd frontend && npm run lint && npm run build   # lints and builds the web app
 ```
+
+## What works so far
+
+- Sign up as a driver or a space owner, log in, log out (username and password; the session is an httpOnly cookie).
+- Drivers land on Find parking (`/search`), owners on My spaces (`/owner/spaces`). Both pages are placeholders for now. Visitors who are not logged in are sent to the login page, and each role is kept out of the other role's pages.
