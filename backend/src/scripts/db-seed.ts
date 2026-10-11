@@ -8,7 +8,7 @@ import { pool } from "../db";
 const DEMO_PASSWORD = "parkspotz-demo";
 const DEMO_USERS = [
   { username: "demo_owner", role: "owner" },
-  { username: "demo_driver", role: "driver" },
+  { username: "demo_customer", role: "customer" },
 ];
 
 // name, address, lat, lng, type, ownership, slots, price per hour, opens, closes
@@ -55,7 +55,7 @@ async function main() {
   }
 
   console.log(`Seed done. Added ${usersAdded} demo account(s) and ${spacesAdded} parking space(s).`);
-  console.log(`Demo logins: demo_owner / ${DEMO_PASSWORD} and demo_driver / ${DEMO_PASSWORD}`);
+  console.log(`Demo logins: demo_owner / ${DEMO_PASSWORD} and demo_customer / ${DEMO_PASSWORD}`);
 }
 
 main()

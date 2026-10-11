@@ -38,7 +38,7 @@ ownerRouter.get("/bookings", async (req, res) => {
   if (day === undefined) return res.status(400).json({ error: "date must look like 2026-01-31" });
 
   const { rows } = await pool.query(
-    `SELECT b.id, b.start_time, b.end_time, b.amount, s.name AS space_name, u.username AS driver
+    `SELECT b.id, b.start_time, b.end_time, b.amount, s.name AS space_name, u.username AS customer
      FROM bookings b
      JOIN parking_spaces s ON s.id = b.space_id
      JOIN users u ON u.id = b.user_id

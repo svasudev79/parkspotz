@@ -9,8 +9,8 @@ import { parseId } from "../spaces";
 
 export const bookingsRouter = Router();
 
-// Bookings belong to drivers; every route here needs a driver session.
-bookingsRouter.use(requireRole("driver"));
+// Bookings belong to customers; every route here needs a customer session.
+bookingsRouter.use(requireRole("customer"));
 
 const MIN_BOOKING_MS = 30 * 60 * 1000; // 30 minutes
 const MAX_BOOKING_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -73,7 +73,7 @@ bookingsRouter.post("/", async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    // Lock the space so two drivers cannot both take the last slot.
+    // Lock the space so two customers cannot both take the last slot.
     const space = (
       await client.query(
         `SELECT s.id, s.is_active, s.total_slots, s.price_per_hour,
@@ -132,7 +132,7 @@ bookingsRouter.post("/", async (req, res) => {
   res.status(201).json({ booking: toBooking(booking), payment: paymentInfo(orderId) });
 });
 
-// GET /bookings — the driver's own bookings, newest first.
+// GET /bookings — the customer's own bookings, newest first.
 bookingsRouter.get("/", async (req, res) => {
   const { rows } = await pool.query(`${BOOKING_SELECT} WHERE b.user_id = $2 ORDER BY b.created_at DESC, b.id DESC`, [
     config.bookingHoldMinutes, req.user!.id,
@@ -140,7 +140,7 @@ bookingsRouter.get("/", async (req, res) => {
   res.json({ bookings: rows.map(toBooking) });
 });
 
-// GET /bookings/:id — one of the driver's own bookings (receipt data).
+// GET /bookings/:id — one of the customer's own bookings (receipt data).
 bookingsRouter.get("/:id", async (req, res) => {
   const booking = await findBooking(parseId(req.params.id), req.user!.id);
   if (!booking) return res.status(404).json({ error: "Booking not found" });

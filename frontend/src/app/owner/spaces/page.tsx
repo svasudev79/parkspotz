@@ -30,7 +30,7 @@ export default async function OwnerSpacesPage() {
 
       {data && spaces.length === 0 && (
         <p className="mt-6 text-slate-600">
-          You have not listed a parking space yet. Add one so drivers can find and book it.
+          You have not listed a parking space yet. Add one so customers can find and book it.
         </p>
       )}
 
@@ -73,7 +73,7 @@ export default async function OwnerSpacesPage() {
                     <span className="font-normal text-slate-600"> · {booking.space_name}</span>
                   </p>
                   <p className="text-sm text-slate-600">
-                    {booking.driver} · {formatRupees(booking.amount)} · {booking.reference}
+                    {booking.customer} · {formatRupees(booking.amount)} · {booking.reference}
                   </p>
                 </li>
               ))}

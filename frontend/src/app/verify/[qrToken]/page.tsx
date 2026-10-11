@@ -64,7 +64,7 @@ export default async function VerifyPage(props: PageProps<"/verify/[qrToken]">) 
             [
               ["Space", booking.space_name],
               ["When", formatWindow(booking.start_time, booking.end_time)],
-              ["Driver", booking.driver],
+              ["Customer", booking.customer],
               ["Paid", formatRupees(booking.amount)],
               ["Reference", booking.reference],
             ] as const

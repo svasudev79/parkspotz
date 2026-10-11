@@ -8,7 +8,7 @@ import { homeFor, type Role, type User } from "@/lib/types";
 import { inputClass } from "./ui";
 
 const ROLES: { value: Role; title: string; hint: string }[] = [
-  { value: "driver", title: "Driver", hint: "Find and book parking" },
+  { value: "customer", title: "Customer", hint: "Find and book parking" },
   { value: "owner", title: "Space owner", hint: "List and manage a parking space" },
 ];
 
@@ -18,7 +18,7 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
   const isSignup = mode === "signup";
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Role>("driver");
+  const [role, setRole] = useState<Role>("customer");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 

@@ -25,10 +25,10 @@ export function validateSignup(username: string, password: unknown, role: unknow
   if (Buffer.byteLength(password, "utf8") > PASSWORD_MAX) {
     return `Password must be at most ${PASSWORD_MAX} characters`;
   }
-  if (!isRole(role)) return "Choose a role: driver or owner";
+  if (!isRole(role)) return "Choose a role: customer or owner";
   return null;
 }
 
 export function isRole(value: unknown): value is Role {
-  return value === "driver" || value === "owner";
+  return value === "customer" || value === "owner";
 }

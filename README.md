@@ -1,7 +1,7 @@
 # parkspotz
 Parking app repository
 
-ParkSpotZ is a web app for finding and booking car parking in Bangalore. Drivers search near a destination, book a slot, pay and get a receipt with a QR code; space owners list their parking, check QR codes at the entrance and track usage and revenue. The design is in [Solution-outline.md](Solution-outline.md) and the requirements in [Goal-spec.md](Goal-spec.md).
+ParkSpotZ is a web app for finding and booking car parking in Bangalore. Customers search near a destination, book a slot, pay and get a receipt with a QR code; space owners list their parking, check QR codes at the entrance and track usage and revenue. The design is in [Solution-outline.md](Solution-outline.md) and the requirements in [Goal-spec.md](Goal-spec.md).
 
 This is Phase 1 and runs on your own computer. It is not deployed anywhere yet.
 
@@ -74,12 +74,12 @@ Open http://localhost:3000 and log in with a demo account:
 
 | Role | Username | Password |
 |------|----------|----------|
-| Driver | `demo_driver` | `parkspotz-demo` |
+| Customer | `demo_customer` | `parkspotz-demo` |
 | Space owner | `demo_owner` | `parkspotz-demo` |
 
 These accounts exist only in your local database. You can also sign up new accounts.
 
-Things to try: as the driver, search **MG Road Metro** within 1 km, open a space, book it and press **Pay** on the test payment screen to get a receipt. As the owner (use a private browser window to stay logged in as both), open **My spaces** and **Stats**, and open the link inside a receipt's QR code to check the booking.
+Things to try: as the customer, search **MG Road Metro** within 1 km, open a space, book it and press **Pay** on the test payment screen to get a receipt. As the owner (use a private browser window to stay logged in as both), open **My spaces** and **Stats**, and open the link inside a receipt's QR code to check the booking.
 
 To check that the frontend reaches the API and the database, open http://localhost:3000/api/health; it should show `{"status":"ok","db":"ok"}`.
 
@@ -157,15 +157,15 @@ npm run lint
 npm run build
 ```
 
-`npm test` runs the real API against the `parkspotz_test` database and checks the two booking rules most likely to break silently: two drivers racing for the last slot (exactly one wins), and overlapping time windows (10:00–12:00 booked means 11:00–13:00 is refused and 12:00–14:00 is free). The tests empty the test database each run. They refuse to start unless the database name ends in `_test`, so they cannot touch your main data. Set `TEST_DATABASE_URL` to use a different test database.
+`npm test` runs the real API against the `parkspotz_test` database and checks the two booking rules most likely to break silently: two customers racing for the last slot (exactly one wins), and overlapping time windows (10:00–12:00 booked means 11:00–13:00 is refused and 12:00–14:00 is free). The tests empty the test database each run. They refuse to start unless the database name ends in `_test`, so they cannot touch your main data. Set `TEST_DATABASE_URL` to use a different test database.
 
 ## What the app does
 
-- **Accounts.** Sign up as a driver or a space owner, log in, log out (username and password; the session is an httpOnly cookie). Each role is kept out of the other role's pages.
+- **Accounts.** Sign up as a customer or a space owner, log in, log out (username and password; the session is an httpOnly cookie). Each role is kept out of the other role's pages.
 - **Owners: spaces.** Add and edit parking spaces: name, address, location, type, ownership, number of slots, price per hour, opening hours, and whether the space is listed.
-- **Drivers: search.** Search near a destination within 500 m, 1 km or 2 km for a date, start time and duration. Results are sorted by distance and show the price and how many slots are free for that time. A space that is closed for the chosen time is still shown, marked "Closed at this time". The search is kept in the page address, so going back to it or reloading shows the same results.
-- **Drivers: booking and payment.** Book a space for the searched time (30 minutes to 24 hours, inside the space's opening hours, starting in the future) and pay. Two drivers cannot take the same last slot.
-- **Drivers: receipt.** After payment the driver gets a receipt with a QR code, which can be printed or saved as a PDF. My bookings lists every booking with its status and receipt.
+- **Customers: search.** Search near a destination within 500 m, 1 km or 2 km for a date, start time and duration. Results are sorted by distance and show the price and how many slots are free for that time. A space that is closed for the chosen time is still shown, marked "Closed at this time". The search is kept in the page address, so going back to it or reloading shows the same results.
+- **Customers: booking and payment.** Book a space for the searched time (30 minutes to 24 hours, inside the space's opening hours, starting in the future) and pay. Two customers cannot take the same last slot.
+- **Customers: receipt.** After payment the customer gets a receipt with a QR code, which can be printed or saved as a PDF. My bookings lists every booking with its status and receipt.
 - **Owners: checking a booking.** The QR code holds a link to `/verify/...`. Opened by the space's owner, it shows whether the booking is valid (paid, and for one of that owner's spaces) and whether its time is upcoming, current or over. A QR code only opens on a phone if `APP_BASE_URL` is an address the phone can reach; on one computer, copy the link instead.
 - **Owners: usage and revenue.** Stats shows paid bookings, hours booked and revenue per space with a total, for a day, week (Monday to Sunday) or month. A booking is counted in the period its start time falls in, so a booking made today for tomorrow appears under tomorrow. My spaces also lists the paid bookings that start today.
 - All times are entered and shown in IST.
@@ -174,10 +174,10 @@ npm run build
 
 - **Google Maps is untested.** No API key was available while building, so the map, Places search and draggable pin have not been run with a real key.
 - **Razorpay is untested.** No Razorpay keys were available, so only the mock payment mode has been run end to end.
-- **Mock payment trusts the browser.** In `mock` mode anyone logged in as a driver can mark their own booking paid. Never use `mock` mode on a public deployment.
+- **Mock payment trusts the browser.** In `mock` mode anyone logged in as a customer can mark their own booking paid. Never use `mock` mode on a public deployment.
 - **Bookings must start and end on the same IST day**, within the space's opening hours. Overnight bookings are not supported.
 - **No background job for expiry.** An unpaid booking simply stops counting once it is older than the hold time; it stays in the database as an expired booking.
-- **No payment webhook.** A Razorpay payment is confirmed only when the driver's browser returns from checkout.
+- **No payment webhook.** A Razorpay payment is confirmed only when the customer's browser returns from checkout.
 - **No check-in marking, cancellations or refunds.** The verify page only shows whether a booking is valid.
 - **No password reset and no login rate limiting.**
 - **Not deployed.** Everything runs locally; a phone can only use it if it can reach your computer.

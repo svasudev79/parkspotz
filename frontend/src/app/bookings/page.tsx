@@ -9,7 +9,7 @@ import { bookingState, type Booking } from "@/lib/types";
 export const metadata: Metadata = { title: "My bookings · ParkSpotZ" };
 
 export default async function BookingsPage() {
-  await requireRole("driver");
+  await requireRole("customer");
   const data = await apiGet<{ bookings: Booking[] }>("/bookings");
   const bookings = data?.bookings ?? [];
 

@@ -11,7 +11,7 @@ import { bookingState, type Booking, type PaymentInfo } from "@/lib/types";
 export const metadata: Metadata = { title: "Pay · ParkSpotZ" };
 
 export default async function PayPage(props: PageProps<"/bookings/[id]/pay">) {
-  await requireRole("driver");
+  await requireRole("customer");
   const { id } = await props.params;
   const data = await apiGet<{ booking: Booking; payment: PaymentInfo }>(`/bookings/${encodeURIComponent(id)}`);
   if (!data) notFound();

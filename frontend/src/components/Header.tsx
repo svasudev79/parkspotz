@@ -4,7 +4,7 @@ import { homeFor, type Role } from "@/lib/types";
 import { LogoutButton } from "./LogoutButton";
 
 const NAV: Record<Role, { href: string; label: string }[]> = {
-  driver: [
+  customer: [
     { href: "/search", label: "Find parking" },
     { href: "/bookings", label: "My bookings" },
   ],

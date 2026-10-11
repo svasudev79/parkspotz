@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   id            SERIAL PRIMARY KEY,
   username      TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
-  role          TEXT NOT NULL CHECK (role IN ('driver', 'owner')),
+  role          TEXT NOT NULL CHECK (role IN ('customer', 'owner')),
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

@@ -24,7 +24,7 @@ export default async function SpacePage(props: PageProps<"/spaces/[id]">) {
   if (!data) notFound();
   const space = data.space;
 
-  // The time window chosen on the search screen, when the driver came from there.
+  // The time window chosen on the search screen, when the customer came from there.
   const start = parseTime(query.start);
   const endTime = parseTime(query.end);
   const end = start && endTime && endTime > start ? endTime : null;
@@ -55,7 +55,7 @@ export default async function SpacePage(props: PageProps<"/spaces/[id]">) {
         ))}
       </dl>
 
-      {user.role === "driver" && (
+      {user.role === "customer" && (
         <BookingPanel space={space} start={start && end ? start.toISOString() : null} end={start && end ? end.toISOString() : null} />
       )}
     </main>

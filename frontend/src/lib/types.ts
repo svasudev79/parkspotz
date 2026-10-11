@@ -1,4 +1,4 @@
-export type Role = "driver" | "owner";
+export type Role = "customer" | "owner";
 
 export interface User {
   id: number;
@@ -60,7 +60,7 @@ export interface PaymentInfo {
   key_id?: string; // Razorpay public key id, razorpay mode only
 }
 
-// The one status shown to drivers for a booking.
+// The one status shown to customers for a booking.
 export function bookingState(booking: Booking): "confirmed" | "cancelled" | "expired" | "awaiting payment" {
   if (booking.status !== "pending") return booking.status;
   return booking.is_expired ? "expired" : "awaiting payment";
@@ -76,7 +76,7 @@ export interface OwnerBooking {
   id: number;
   reference: string;
   space_name: string;
-  driver: string;
+  customer: string;
   start_time: string;
   end_time: string;
   amount: number;

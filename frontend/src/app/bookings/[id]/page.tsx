@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Receipt · ParkSpotZ" };
 
 // Receipt for a confirmed booking; a short status page for any other booking.
 export default async function BookingPage(props: PageProps<"/bookings/[id]">) {
-  await requireRole("driver");
+  await requireRole("customer");
   const { id } = await props.params;
   const data = await apiGet<{ booking: Booking }>(`/bookings/${encodeURIComponent(id)}`);
   if (!data) notFound();

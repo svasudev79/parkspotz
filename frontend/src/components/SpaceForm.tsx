@@ -241,7 +241,7 @@ export function SpaceForm({ space }: { space?: Space }) {
           checked={form.is_active}
           onChange={(e) => set("is_active", e.target.checked)}
         />
-        Listed — drivers can find this space
+        Listed — customers can find this space
       </label>
 
       {error && (

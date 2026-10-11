@@ -36,7 +36,7 @@ function parseForm(query: Query): SearchForm | null {
 }
 
 export default async function SearchPage(props: PageProps<"/search">) {
-  await requireRole("driver");
+  await requireRole("customer");
   const form = parseForm(await props.searchParams);
 
   // A search in the URL is run straight away, so Back from a space page (or a
