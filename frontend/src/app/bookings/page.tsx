@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookingStatus } from "@/components/BookingStatus";
+import { VisitSummary } from "@/components/VisitSummary";
 import { cardClass, primaryButtonClass } from "@/components/ui";
 import { formatRupees, formatWindow } from "@/lib/format";
 import { apiGet, requireRole } from "@/lib/session";
@@ -41,6 +42,7 @@ export default async function BookingsPage() {
                 <span className="font-semibold text-slate-900">{formatRupees(booking.amount)}</span> ·{" "}
                 {booking.reference}
               </p>
+              <VisitSummary booking={booking} />
               <Link
                 href={state === "awaiting payment" ? `/bookings/${booking.id}/pay` : `/bookings/${booking.id}`}
                 className="inline-flex h-11 items-center self-start rounded-lg text-base font-semibold text-emerald-700 underline"

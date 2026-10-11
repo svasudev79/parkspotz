@@ -76,6 +76,7 @@ Open http://localhost:3000 and log in with a demo account:
 |------|----------|----------|
 | Customer | `demo_customer` | `parkspotz-demo` |
 | Space owner | `demo_owner` | `parkspotz-demo` |
+| Gate attendant (at MG Road Metro Parking) | `demo_attendant` | `parkspotz-demo` |
 
 These accounts exist only in your local database. You can also sign up new accounts.
 
@@ -96,7 +97,7 @@ npm run db:stop
 
 ## Seed data
 
-`npm run db:seed` (in `backend/`) adds the two demo accounts and ten parking spaces owned by `demo_owner`: four near MG Road Metro at different distances, and one each near Cubbon Park, Indiranagar, Koramangala Forum Mall, Majestic, Jayanagar 4th Block and Whitefield ITPL. It only adds what is missing and never changes or removes existing data.
+`npm run db:seed` (in `backend/`) adds the demo accounts (owner, customer, and a gate attendant attached to MG Road Metro Parking) and ten parking spaces owned by `demo_owner`: four near MG Road Metro at different distances, and one each near Cubbon Park, Indiranagar, Koramangala Forum Mall, Majestic, Jayanagar 4th Block and Whitefield ITPL. It only adds what is missing and never changes or removes existing data.
 
 ## Settings
 
@@ -107,6 +108,11 @@ npm run db:stop
 | `backend/.env` | `PORT` | API port, default 8080 |
 | `backend/.env` | `BOOKING_HOLD_MINUTES` | How long an unpaid booking keeps its slot, default 10 |
 | `backend/.env` | `APP_BASE_URL` | Public address of the frontend, default `http://localhost:3000`. Receipt QR codes link to `<APP_BASE_URL>/verify/<token>` |
+| `backend/.env` | `ENTRY_GRACE_MINUTES` | How many minutes before a booking starts its entry can be recorded at the gate, default 15 |
+| `backend/.env` | `OVERSTAY_GRACE_MINUTES` | Free minutes after a booking's end before an overstay charge applies, default 10 |
+| `backend/.env` | `OVERSTAY_BLOCK_MINUTES` | Overstay is billed in started blocks of this many minutes, default 30 |
+| `backend/.env` | `OVERSTAY_RATE_PERCENT` | Overstay rate as a percentage of the space's hourly price, default 100 |
+| `backend/.env` | `UPLOADS_DIR` | Folder for entry photos, default `backend/uploads` |
 | `backend/.env` | `PAYMENT_MODE` | `mock` or `razorpay` (see Payments) |
 | `backend/.env` | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | Razorpay test keys; only needed for `razorpay` mode |
 | `frontend/.env.local` | `API_URL` | Where `/api/*` is forwarded, default `http://localhost:8080` |
@@ -166,8 +172,15 @@ npm run build
 - **Customers: search.** Search near a destination within 500 m, 1 km or 2 km for a date, start time and duration. Results are sorted by distance and show the price and how many slots are free for that time. A space that is closed for the chosen time is still shown, marked "Closed at this time". The search is kept in the page address, so going back to it or reloading shows the same results.
 - **Customers: booking and payment.** Book a space for the searched time (30 minutes to 24 hours, inside the space's opening hours, starting in the future) and pay. Two customers cannot take the same last slot.
 - **Customers: receipt.** After payment the customer gets a receipt with a QR code, which can be printed or saved as a PDF. My bookings lists every booking with its status and receipt.
-- **Owners: checking a booking.** The QR code holds a link to `/verify/...`. Opened by the space's owner, it shows whether the booking is valid (paid, and for one of that owner's spaces) and whether its time is upcoming, current or over. A QR code only opens on a phone if `APP_BASE_URL` is an address the phone can reach; on one computer, copy the link instead.
-- **Owners: usage and revenue.** Stats shows paid bookings, hours booked and revenue per space with a total, for a day, week (Monday to Sunday) or month. A booking is counted in the period its start time falls in, so a booking made today for tomorrow appears under tomorrow. My spaces also lists the paid bookings that start today.
+- **Checking a booking.** The QR code holds a link to `/verify/...`. Opened by the space's owner or one of its attendants, it shows whether the booking is valid (paid, and for their space) and whether its time is upcoming, current or over. A QR code only opens on a phone if `APP_BASE_URL` is an address the phone can reach; on one computer, copy the link instead.
+- **Owners: usage and revenue.** Stats shows paid bookings, hours booked and revenue per space with a total, for a day, week (Monday to Sunday) or month. A booking is counted in the period its start time falls in, so a booking made today for tomorrow appears under tomorrow. Overstay charges collected at the gate (cash and UPI) are shown in their own column and are not part of booking revenue; waived charges are mentioned separately and not counted. My spaces also lists the paid bookings that start today.
+- **Owners: gate attendants.** On a space's edit page the owner creates attendant logins for that space (username and password) and removes them. Attendants cannot sign up themselves. Removing an attendant deactivates the account, so it can no longer log in, while the vehicle log keeps showing who recorded each entry and exit.
+- **Attendants: one space, no revenue.** An attendant sees only the one space they were created for: vehicles inside now, bookings expected today, and the vehicle history. They never see what customers paid, revenue or totals. The only amount they see is an individual vehicle's overstay charge, because they have to collect it.
+- **Gate: entry and exit.** The receipt QR opens the check screen for the space's owner or its attendants (a booking can also be found by its `PSZ-…` reference). There they record the vehicle's entry, optionally with its number and a photo taken with the phone's camera, and later its exit. Entry can be recorded from 15 minutes before the booking starts until it ends, and only once per booking.
+- **Gate: time left and overstay.** A vehicle that is inside shows a live countdown to its booked end time. After the end, the first 10 minutes are free; beyond that the whole overstay is billed from the booked end in started 30-minute blocks at the space's hourly price (₹40/hour: 11 to 30 minutes late costs ₹20, 31 to 60 minutes ₹40). The API works the charge out from its own clock when exit is recorded. If a charge is due, the attendant must say how it was settled (cash, UPI, or waived with a reason) before the exit is saved. There is no online collection of overstay.
+- **Vehicle history.** Attendants (for their space) and owners (for each of their spaces) see the incoming and outgoing log by day: vehicle number, entry and exit times, who recorded them, any overstay and how it was settled, and the entry photo.
+- **Customers: after the visit.** Once the vehicle has left, the receipt and My bookings show the entry and exit times and any overstay charge.
+- **Entry photos.** Photos are shrunk in the browser (longest side 1600 px, JPEG) before upload, limited to 5 MB, accepted only if the file really is a JPEG, PNG or WebP, stored in `backend/uploads/` (ignored by git) under random names, and shown only to the space's owner and attendants.
 - All times are entered and shown in IST.
 
 ## Known limitations
@@ -178,6 +191,10 @@ npm run build
 - **Bookings must start and end on the same IST day**, within the space's opening hours. Overnight bookings are not supported.
 - **No background job for expiry.** An unpaid booking simply stops counting once it is older than the hold time; it stays in the database as an expired booking.
 - **No payment webhook.** A Razorpay payment is confirmed only when the customer's browser returns from checkout.
-- **No check-in marking, cancellations or refunds.** The verify page only shows whether a booking is valid.
+- **No cancellations or refunds.**
+- **Entry photos live on local disk** (`backend/uploads/`). A cloud deployment will need object storage instead, because most hosts do not keep local files between restarts.
+- **Number plates and vehicle photos are personal data.** There is no retention policy yet: nothing deletes old visits or photos. Decide how long to keep them before using this with real customers.
+- **Overstay is collected at the gate only** (cash or UPI, recorded by the attendant). The app does not take overstay payments online and does not check that the money was actually received.
+- **A removed attendant's username stays taken**, because the account is deactivated and not deleted.
 - **No password reset and no login rate limiting.**
 - **Not deployed.** Everything runs locally; a phone can only use it if it can reach your computer.

@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { BookingStatus } from "@/components/BookingStatus";
 import { BookingSummary } from "@/components/BookingSummary";
 import { PrintButton } from "@/components/PrintButton";
+import { VisitSummary } from "@/components/VisitSummary";
 import { cardClass, primaryButtonClass } from "@/components/ui";
 import { apiGet, requireRole } from "@/lib/session";
 import { bookingState, type Booking } from "@/lib/types";
@@ -36,6 +37,7 @@ export default async function BookingPage(props: PageProps<"/bookings/[id]">) {
         <p className="hidden text-sm text-slate-600 print:block">ParkSpotZ</p>
 
         <BookingSummary booking={booking} />
+        <VisitSummary booking={booking} />
 
         {qr && (
           <div className="flex flex-col items-center gap-2 border-t border-slate-200 pt-4">

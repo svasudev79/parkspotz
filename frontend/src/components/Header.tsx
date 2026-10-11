@@ -12,6 +12,10 @@ const NAV: Record<Role, { href: string; label: string }[]> = {
     { href: "/owner/spaces", label: "My spaces" },
     { href: "/owner/stats", label: "Stats" },
   ],
+  attendant: [
+    { href: "/attendant", label: "Gate" },
+    { href: "/attendant/history", label: "History" },
+  ],
 };
 
 const navLinkClass = "rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100";

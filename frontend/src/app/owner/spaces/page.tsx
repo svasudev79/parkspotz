@@ -52,9 +52,14 @@ export default async function OwnerSpacesPage() {
               </p>
               <SpaceFacts space={space} />
             </div>
-            <Link href={`/owner/spaces/${space.id}/edit`} className={`${secondaryButtonClass} shrink-0`}>
-              Edit
-            </Link>
+            <div className="flex shrink-0 gap-2 sm:flex-col">
+              <Link href={`/owner/spaces/${space.id}/edit`} className={`${secondaryButtonClass} flex-1`}>
+                Edit and attendants
+              </Link>
+              <Link href={`/owner/spaces/${space.id}/history`} className={`${secondaryButtonClass} flex-1`}>
+                Vehicle history
+              </Link>
+            </div>
           </li>
         ))}
       </ul>

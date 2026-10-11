@@ -81,32 +81,43 @@ export default async function OwnerStatsPage(props: PageProps<"/owner/stats">) {
             <table className="w-full text-left text-sm sm:text-base">
               <thead className="border-b border-slate-200 text-sm text-slate-500">
                 <tr>
-                  <th className="py-3 pr-2 pl-3 font-medium sm:px-4">Space</th>
-                  <th className="px-2 py-3 sm:px-3 text-right font-medium">Bookings</th>
-                  <th className="px-2 py-3 sm:px-3 text-right font-medium">Hours</th>
-                  <th className="px-2 py-3 sm:px-4 text-right font-medium">Revenue</th>
+                  <th className="py-3 pr-1.5 pl-3 font-medium sm:px-4">Space</th>
+                  <th className="px-1.5 py-3 sm:px-3 text-right font-medium">Booked</th>
+                  <th className="px-1.5 py-3 sm:px-3 text-right font-medium">Hours</th>
+                  <th className="px-1.5 py-3 sm:px-3 text-right font-medium">Revenue</th>
+                  <th className="px-1.5 py-3 sm:px-4 text-right font-medium">Overstay</th>
                 </tr>
               </thead>
               <tbody>
                 {stats.spaces.map((row) => (
                   <tr key={row.space_id} className="border-b border-slate-100">
-                    <td className="px-2 py-3 sm:px-4 break-words">{row.space_name}</td>
-                    <td className="px-2 py-3 sm:px-3 text-right tabular-nums">{row.bookings}</td>
-                    <td className="px-2 py-3 sm:px-3 text-right tabular-nums">{row.hours}</td>
-                    <td className="px-2 py-3 sm:px-4 text-right tabular-nums">{formatRupees(row.revenue)}</td>
+                    <td className="py-3 pr-1.5 pl-3 break-words sm:px-4">{row.space_name}</td>
+                    <td className="px-1.5 py-3 sm:px-3 text-right tabular-nums">{row.bookings}</td>
+                    <td className="px-1.5 py-3 sm:px-3 text-right tabular-nums">{row.hours}</td>
+                    <td className="px-1.5 py-3 sm:px-3 text-right tabular-nums">{formatRupees(row.revenue)}</td>
+                    <td className="px-1.5 py-3 sm:px-4 text-right tabular-nums">{formatRupees(row.overstay_collected)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="font-semibold">
-                  <td className="px-2 py-3 sm:px-4">Total</td>
-                  <td className="px-2 py-3 sm:px-3 text-right tabular-nums">{stats.total.bookings}</td>
-                  <td className="px-2 py-3 sm:px-3 text-right tabular-nums">{stats.total.hours}</td>
-                  <td className="px-2 py-3 sm:px-4 text-right tabular-nums">{formatRupees(stats.total.revenue)}</td>
+                  <td className="py-3 pr-1.5 pl-3 sm:px-4">Total</td>
+                  <td className="px-1.5 py-3 sm:px-3 text-right tabular-nums">{stats.total.bookings}</td>
+                  <td className="px-1.5 py-3 sm:px-3 text-right tabular-nums">{stats.total.hours}</td>
+                  <td className="px-1.5 py-3 sm:px-3 text-right tabular-nums">{formatRupees(stats.total.revenue)}</td>
+                  <td className="px-1.5 py-3 sm:px-4 text-right tabular-nums">
+                    {formatRupees(stats.total.overstay_collected)}
+                  </td>
                 </tr>
               </tfoot>
             </table>
           </div>
+          <p className="text-sm text-slate-600">
+            Revenue is what customers paid for bookings. Overstay is extra, collected at the gate in cash or UPI
+            {stats.total.overstay_waived > 0
+              ? `; a further ${formatRupees(stats.total.overstay_waived)} of overstay was waived and is not counted.`
+              : "; waived overstay charges are not counted."}
+          </p>
         </>
       )}
     </main>

@@ -13,3 +13,10 @@ export const secondaryButtonClass =
 export const errorClass = "rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700";
 
 export const cardClass = "rounded-xl border border-slate-200 bg-white p-4";
+
+// Large buttons for the gate screens, used one-handed on a phone.
+export const gateButtonClass =
+  "inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-emerald-600 px-5 text-lg font-semibold text-white hover:bg-emerald-700 disabled:opacity-60";
+
+export const gateExitButtonClass =
+  "inline-flex min-h-14 w-full items-center justify-center rounded-xl bg-slate-800 px-5 text-lg font-semibold text-white hover:bg-slate-900 disabled:opacity-60";
