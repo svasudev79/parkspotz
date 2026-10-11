@@ -3,7 +3,7 @@ Parking app repository
 
 ParkSpotZ is a web app for finding and booking car parking in Bangalore. Customers search near a destination, book a slot, pay and get a receipt with a QR code; space owners list their parking, check QR codes at the entrance and track usage and revenue. The design is in [Solution-outline.md](Solution-outline.md) and the requirements in [Goal-spec.md](Goal-spec.md).
 
-This is Phase 1 and runs on your own computer. It is not deployed anywhere yet.
+This runs on your own computer. It is not deployed anywhere yet; [DEPLOY.md](DEPLOY.md) describes how to deploy it (Vercel, Google Cloud Run, Neon).
 
 ## Layout
 
@@ -115,10 +115,13 @@ npm run db:stop
 | `backend/.env` | `OVERSTAY_BLOCK_MINUTES` | Overstay is billed in started blocks of this many minutes, default 30 |
 | `backend/.env` | `OVERSTAY_RATE_PERCENT` | Overstay rate as a percentage of the space's hourly price, default 100 |
 | `backend/.env` | `UPLOADS_DIR` | Folder for entry photos, default `backend/uploads` |
-| `backend/.env` | `GUEST_MAX_PENDING` | How many unpaid bookings a guest browser, and an IP address, may hold at once, default 2 |
+| `backend/.env` | `GUEST_MAX_PENDING` | How many unpaid bookings a guest browser, an IP address, and a mobile number may each hold at once, default 2 |
 | `backend/.env` | `TRUST_PROXY_HOPS` | How many proxies in front of the API are trusted for the caller's address, default 1 (the Next.js `/api` forwarding) |
 | `backend/.env` | `RENTAL_DUE_DAY` | Day of the month a rental invoice falls due, default 7 |
 | `backend/.env` | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | The platform admin login, read only by `npm run admin:create` |
+| `backend/.env` | `DEMO_PASSWORD` | Password for the demo accounts made by `npm run db:seed`. Empty locally means the default below. If set and different, `db:seed` updates the existing demo accounts to it. A public deployment must set a long random one |
+| `backend/.env` | `SEED_DEMO_DATA` | `false` makes `db:seed` add only the rental tiers, with no demo accounts or spaces. Default `true` |
+| `backend/.env` | `PG_POOL_MAX` | Database connections kept open, default 5 |
 | `backend/.env` | `PAYMENT_MODE` | `mock` or `razorpay` (see Payments) |
 | `backend/.env` | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | Razorpay test keys; only needed for `razorpay` mode |
 | `frontend/.env.local` | `API_URL` | Where `/api/*` is forwarded, default `http://localhost:8080` |
@@ -176,6 +179,14 @@ Space owners pay ParkSpotZ a monthly fee for each listed space, set by its numbe
 - **Paying.** Owners pay from their Rental page with the same payment setup as bookings (`PAYMENT_MODE`), and get a receipt. Rental payments are stored separately from booking payments.
 - **Non-payment is only flagged.** Overdue invoices are highlighted for the admin and the owner. Nothing is hidden, unlisted or blocked.
 
+### Running the scripts against another database
+
+`db:setup`, `db:seed`, `admin:create` and `rental:generate` work on whatever `DATABASE_URL` points at, and a value given on the command line wins over `backend/.env`. Each one first prints the host and database name it is about to change. If the host is not this computer it stops unless `CONFIRM_REMOTE=yes` is set, and the admin and demo passwords must then be given on the command line too, so a local password is never reused by accident. [DEPLOY.md](DEPLOY.md) shows the exact commands.
+
+### Production safety checks
+
+When `NODE_ENV=production` the API refuses to start if payments would be in `mock` mode, if `JWT_SECRET` is shorter than 32 characters, or if `APP_BASE_URL` is not an `https://` address. `GET /api/admin/diagnostics` (admin login needed) shows what a running deployment is using: payment mode, the caller's address as the API sees it, whether the photo folder is writable, and so on. It shows no secrets.
+
 ## Tests and checks
 
 ```bash
@@ -196,7 +207,7 @@ npm run build
 - **Guest mode.** The first screen is the search screen, with no login. Anyone can search, open a space, book and pay without an account by giving a name and an Indian mobile number at the confirm step (no OTP). The guest then lands on a private receipt link (`/receipt/<long random token>`) with the QR code, which works on any device without logging in and is kept out of search engines and referrers. The same browser lists its guest bookings under My bookings. All booking rules are the same as for customers.
 - **Guest to customer.** When someone signs up or logs in as a customer in a browser that holds guest bookings, those bookings move to that account at that moment and appear under its My bookings. The old receipt links keep working.
 - **Guests and the gate.** Owners and attendants see a guest's name with a "Guest" tag wherever a customer name appears. The guest's phone number is shown only on the check screen for that booking, to the space's owner and attendants. The admin sees only how many bookings came from guests.
-- **Limits on guests.** A guest browser, and an IP address, can each hold at most 2 unpaid bookings at a time (`GUEST_MAX_PENDING`); paying, cancelling or letting a hold expire frees a place. Logged-in customers are not limited.
+- **Limits on guests.** A guest browser, an IP address, and a mobile number can each hold at most 2 unpaid bookings at a time (`GUEST_MAX_PENDING`); paying, cancelling or letting a hold expire frees a place. Logged-in customers are not limited.
 - **Owners: spaces.** Add and edit parking spaces: name, address, location, type, ownership, number of slots, price per hour, opening hours, and whether the space is listed.
 - **Customers: search.** Search near a destination within 500 m, 1 km or 2 km for a date, start time and duration. Results are sorted by distance and show the price and how many slots are free for that time. A space that is closed for the chosen time is still shown, marked "Closed at this time". The search is kept in the page address, so going back to it or reloading shows the same results.
 - **Customers: booking and payment.** Book a space for the searched time (30 minutes to 24 hours, inside the space's opening hours, starting in the future) and pay. Two customers cannot take the same last slot.
@@ -218,8 +229,7 @@ npm run build
 
 ## Known limitations
 
-- **Google Maps is untested.** No API key was available while building, so the map, Places search and draggable pin have not been run with a real key.
-- **Razorpay is untested.** No Razorpay keys were available, so only the mock payment mode has been run end to end.
+- **Not everything has been run with real keys.** Google Maps and Razorpay test payments were verified with real keys for customer bookings. Razorpay has not been run for rental invoices or for guest bookings (only the mock mode has), and the camera capture, QR scanning and printing have not been tried on a real phone.
 - **Mock payment trusts the browser.** In `mock` mode anyone logged in as a customer can mark their own booking paid. Never use `mock` mode on a public deployment.
 - **Bookings must start and end on the same IST day**, within the space's opening hours. Overnight bookings are not supported.
 - **No background job for expiry.** An unpaid booking simply stops counting once it is older than the hold time; it stays in the database as an expired booking.
@@ -232,11 +242,11 @@ npm run build
 - **Guest phone numbers are not verified.** There is no OTP, so a guest can type any number.
 - **A lost guest receipt link cannot be recovered** except from the browser that made the booking (My bookings), and only while that browser keeps its cookie (30 days). There is no way to look a guest booking up by phone number.
 - **Guest names and phone numbers are personal data** with no retention policy yet, like number plates and photos.
-- **The per-IP guest limit depends on the proxy in front of the app.** The API takes the caller's address from the last `X-Forwarded-For` entry (`TRUST_PROXY_HOPS=1`). Run directly as described here, with nothing in front of Next.js, a caller can forge that header and so get around the per-IP limit; the per-browser limit can be avoided by clearing cookies. When deployed, put the app behind a proxy or platform that overwrites `X-Forwarded-For` and set `TRUST_PROXY_HOPS` to the number of proxies between the internet and the API.
+- **Guest limits can be worked around.** Unpaid guest holds are capped per browser, per IP address and per mobile number. Clearing cookies avoids the first, and typing a different (unverified) number avoids the third. The IP limit depends on the proxies in front of the API: it takes the caller's address from `X-Forwarded-For`, trusting `TRUST_PROXY_HOPS` entries. Run locally with nothing in front of Next.js, a caller can forge that header. For a deployment, see the proxy section of [DEPLOY.md](DEPLOY.md).
 - **No password reset and no login rate limiting.**
 - **Rental has no auto-debit and no reminders.** Owners pay each invoice themselves; nobody is emailed or messaged.
 - **Rental non-payment is flag-only.** An overdue invoice changes nothing about how the space works.
 - **The admin cannot mark an invoice paid, cancel it or change its amount.**
 - **No hosting-cost view yet.** Comparing rental income with what the platform costs to run is left for when it is deployed.
 - **Spaces that are not listed are not invoiced**, so unlisting a space before the month starts avoids that month's fee.
-- **Not deployed.** Everything runs locally; a phone can only use it if it can reach your computer.
+- **Not deployed yet.** Everything runs locally; a phone can only use it if it can reach your computer. [DEPLOY.md](DEPLOY.md) is the runbook for putting it online; it has not been run.
