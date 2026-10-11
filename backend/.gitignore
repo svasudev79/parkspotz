@@ -1,5 +1,10 @@
 node_modules/
 dist/
+# secrets: every env file except the example with placeholders
 .env
+.env.*
+*.env
+!.env.example
+deploy/secrets*
 # entry photos taken at the gate
 uploads/

@@ -1,3 +1,11 @@
 .DS_Store
 # repo-local Postgres data directory (see README)
 .localdb/
+
+# Secrets and deployment settings never belong in git. The .env.example files
+# (placeholders only) are the exception.
+.env
+.env.*
+*.env
+!.env.example
+deploy/secrets*

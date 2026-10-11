@@ -26,18 +26,25 @@ guestRouter.post("/bookings", async (req, res) => {
   if (!name) return res.status(400).json({ error: "Enter your name (2 to 60 characters)" });
   if (!phone) return res.status(400).json({ error: "Enter a 10-digit Indian mobile number" });
 
-  // Anyone can reach this, so cap the slots one browser or one address can
-  // hold without paying. Paid, cancelled and expired bookings do not count.
+  // Anyone can reach this, so cap the slots one browser, one address or one
+  // mobile number can hold without paying. Paid, cancelled and expired bookings do not count.
   const tokens = guestTokens(req);
   const ip = req.ip ?? null;
   const held = await pool.query(
     `SELECT count(*) FILTER (WHERE b.access_token = ANY($2::text[]))::int AS by_browser,
-            count(*) FILTER (WHERE b.guest_ip = $3)::int AS by_address
+            count(*) FILTER (WHERE b.guest_ip = $3)::int AS by_address,
+            count(*) FILTER (WHERE b.guest_phone = $4)::int AS by_phone
      FROM bookings b
      WHERE b.user_id IS NULL AND b.status = 'pending' AND ${holdsSlotSql("$1")}`,
-    [config.bookingHoldMinutes, tokens, ip]
+    [config.bookingHoldMinutes, tokens, ip, phone]
   );
-  if (held.rows[0].by_browser >= config.guestMaxPending || held.rows[0].by_address >= config.guestMaxPending) {
+  const { by_browser, by_address, by_phone } = held.rows[0];
+  if (by_phone >= config.guestMaxPending) {
+    return res.status(429).json({
+      error: `There are already ${config.guestMaxPending} unpaid bookings for this mobile number. Pay for one or wait a few minutes, then try again.`,
+    });
+  }
+  if (by_browser >= config.guestMaxPending || by_address >= config.guestMaxPending) {
     return res.status(429).json({
       error: `You already have ${config.guestMaxPending} unpaid bookings. Pay for one or wait a few minutes, then try again.`,
     });

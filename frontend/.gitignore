@@ -40,5 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+*.env
+deploy/secrets*
+
 # ...but do commit the example
 !.env.example

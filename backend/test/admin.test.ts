@@ -201,6 +201,7 @@ test("admin and rental APIs reject every other role and anonymous visitors", asy
     ["GET", "/admin/dashboard"],
     ["GET", "/admin/spaces"],
     ["GET", "/admin/rental"],
+    ["GET", "/admin/diagnostics"],
     ["PUT", "/admin/rental/tiers", { tiers: DEFAULT_TIERS }],
   ];
   for (const [method, path, body] of adminCalls) {
@@ -254,4 +255,23 @@ test("admin spaces list: tier, rental status and sorting", async () => {
   assert.deepEqual(ranks, [...ranks].sort((a, b) => a - b));
   // The admin's space list carries no customer details.
   assert.doesNotMatch(JSON.stringify(byRental.body), /rent_customer|phone/);
+});
+
+test("admin diagnostics describe the deployment without any secrets", async () => {
+  const res = await call(admin, "GET", "/admin/diagnostics", undefined, { "X-Forwarded-For": "203.0.113.50, 198.51.100.7" });
+  assert.equal(res.status, 200);
+  assert.deepEqual(Object.keys(res.body).sort(), [
+    "app_base_url", "client_ip", "database", "forwarded_for", "node_env", "payment_mode", "pg_pool_max",
+    "secure_cookies", "server_time", "trust_proxy_hops", "uploads_dir", "uploads_writable", "version",
+  ]);
+  assert.equal(res.body.payment_mode, "mock");
+  assert.equal(res.body.database, "ok");
+  assert.equal(res.body.uploads_writable, true);
+  // With one trusted hop, the caller's address is the last X-Forwarded-For entry.
+  assert.equal(res.body.trust_proxy_hops, 1);
+  assert.equal(res.body.client_ip, "198.51.100.7");
+  assert.equal(res.body.forwarded_for, "203.0.113.50, 198.51.100.7");
+  const text = JSON.stringify(res.body);
+  assert.ok(!text.includes(process.env.JWT_SECRET!), "no JWT secret");
+  assert.doesNotMatch(text, /postgres:\/\/|password|secret|rzp_/i);
 });

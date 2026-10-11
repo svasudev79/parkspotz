@@ -1,5 +1,15 @@
-import "dotenv/config";
 import { resolve } from "node:path";
+import dotenv from "dotenv";
+import { productionProblems } from "./safety";
+
+// Settings given on the command line or by the host (Cloud Run, a shell)
+// before backend/.env is read. Scripts use this to insist that passwords for
+// a remote database are given explicitly and not picked up from a local .env.
+const shellEnv = new Set(Object.keys(process.env));
+export const setInShell = (name: string) => shellEnv.has(name) && process.env[name] !== "";
+
+// backend/.env fills in whatever is not already set. It never overrides.
+dotenv.config({ quiet: true });
 
 function required(name: string): string {
   const value = process.env[name];
@@ -52,4 +62,18 @@ export const config = {
   paymentMode: paymentMode(),
   razorpayKeyId,
   razorpayKeySecret,
+  // Connections kept open to Postgres. Small, because free hosted databases
+  // allow few connections.
+  pgPoolMax: Math.max(Number(process.env.PG_POOL_MAX ?? 5), 1),
+  // Shown by GET /admin/diagnostics so a deployment can be identified.
+  // Cloud Run sets K_SERVICE and K_REVISION itself.
+  version: process.env.APP_VERSION || process.env.K_REVISION || "unknown",
 };
+
+// A public deployment must not start in an unsafe state.
+if (config.isProduction) {
+  const problems = productionProblems(config);
+  if (problems.length > 0) {
+    throw new Error(`Refusing to start with NODE_ENV=production:\n- ${problems.join("\n- ")}`);
+  }
+}

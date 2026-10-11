@@ -37,8 +37,12 @@ function freshWindow(spaceId = space) {
   return { space_id: spaceId, start: ist(day, "10:00"), end: ist(day, "12:00") };
 }
 
+// Books as a guest. Each call uses a new mobile number unless `extra.phone`
+// says otherwise, because unpaid holds are also limited per number.
+let nextPhone = 0;
 async function guestBooks(guest: Guest, extra: Record<string, unknown> = {}) {
-  return guestCall(guest, "POST", "/guest/bookings", { ...freshWindow(), ...GUEST, ...extra });
+  const phone = `98${String(10000000 + nextPhone++)}`;
+  return guestCall(guest, "POST", "/guest/bookings", { ...freshWindow(), name: GUEST.name, phone, ...extra });
 }
 
 before(async () => {
@@ -163,6 +167,8 @@ test("guest name and phone are validated; +91 and 0 prefixes are removed", async
     const res = await guestBooks(newGuest(), { phone: input });
     assert.equal(res.status, 201, input);
     assert.equal(res.body.booking.guest_phone, stored, input);
+    // Release the hold, so the limit per mobile number does not get in the way.
+    await call(null, "POST", `/guest/bookings/${res.body.booking.access_token}/fail`);
   }
   for (const phone of ["", "12345", "5876543210", "98765432101", "98765abcde", "+449876543210", 9876543210, null]) {
     const res = await guestBooks(newGuest(), { phone });
@@ -217,6 +223,21 @@ test("unpaid holds are limited to 2 per guest browser and per IP (429), and free
   }
 });
 
+test("unpaid holds are also limited to 2 per mobile number, whatever the browser or IP", async () => {
+  const phone = "9123456780";
+  // Three different browsers at three different addresses, one phone number.
+  const first = await guestBooks(newGuest(), { phone });
+  const second = await guestBooks(newGuest(), { phone: `+91 ${phone}` });
+  assert.deepEqual([first.status, second.status], [201, 201]);
+  const third = await guestBooks(newGuest(), { phone: `0${phone}` });
+  assert.equal(third.status, 429);
+  assert.match(third.body.error, /mobile number/);
+  // Another number is fine, and paying frees a place for this one.
+  assert.equal((await guestBooks(newGuest(), { phone: "9123456781" })).status, 201);
+  await call(null, "POST", `/guest/bookings/${first.body.booking.access_token}/confirm`, { mock_payment_id: "mock_pay_p" });
+  assert.equal((await guestBooks(newGuest(), { phone })).status, 201);
+});
+
 test("logging in or signing up as a customer moves the browser's guest bookings to that account", async () => {
   const guest = newGuest();
   const one = (await guestBooks(guest)).body.booking;
@@ -259,7 +280,7 @@ test("last slot: a guest and a customer booking the same window at once — exac
     const window = freshWindow(single);
     const results = await Promise.all([
       call(customer, "POST", "/bookings", window),
-      guestCall(newGuest(), "POST", "/guest/bookings", { ...window, ...GUEST }),
+      guestBooks(newGuest(), window),
     ]);
     assert.deepEqual(results.map((r) => r.status).sort(), [201, 409], `round ${round}`);
     const { rows } = await pool.query("SELECT count(*)::int AS n FROM bookings WHERE space_id = $1 AND start_time = $2", [single, window.start]);
@@ -269,7 +290,7 @@ test("last slot: a guest and a customer booking the same window at once — exac
 
 test("gate staff see a guest's name and tag everywhere, the phone only on the check screen; the admin sees counts only", async () => {
   const guest = newGuest();
-  const booking = (await guestBooks(guest)).body.booking;
+  const booking = (await guestBooks(guest, { phone: GUEST.phone })).body.booking;
   await guestCall(guest, "POST", `/guest/bookings/${booking.access_token}/confirm`, { mock_payment_id: "mock_pay_g" });
   // Make the booking current so entry can be recorded.
   const { rows } = await pool.query(

@@ -1,4 +1,8 @@
+import { randomBytes } from "node:crypto";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { Router } from "express";
+import { config } from "../config";
 import { pool } from "../db";
 import { requireRole } from "../middleware/auth";
 import { generateInvoices, INVOICE_SELECT, loadTiers, THIS_MONTH_SQL, tierFor, toInvoice, validateTiers } from "../rental";
@@ -8,6 +12,46 @@ import { generateInvoices, INVOICE_SELECT, loadTiers, THIS_MONTH_SQL, tierFor, t
 export const adminRouter = Router();
 
 adminRouter.use(requireRole("admin"));
+
+// GET /admin/diagnostics — facts about this deployment, to check it after
+// deploying. Contains no secrets.
+//   client_ip      the address the API believes the caller has. Opened through
+//                  the website, it should be your own public IP; if it is a
+//                  proxy's address, TRUST_PROXY_HOPS is too low.
+//   forwarded_for  the X-Forwarded-For chain as it reached the API.
+adminRouter.get("/diagnostics", async (req, res) => {
+  let uploadsWritable = false;
+  try {
+    await mkdir(config.uploadsDir, { recursive: true });
+    const probe = join(config.uploadsDir, `.write-test-${randomBytes(6).toString("hex")}`);
+    await writeFile(probe, "ok");
+    await unlink(probe);
+    uploadsWritable = true;
+  } catch {
+    uploadsWritable = false;
+  }
+  let database = "ok";
+  try {
+    await pool.query("SELECT 1");
+  } catch {
+    database = "unreachable";
+  }
+  res.json({
+    version: config.version,
+    node_env: process.env.NODE_ENV ?? "(not set)",
+    payment_mode: config.paymentMode,
+    app_base_url: config.appBaseUrl,
+    trust_proxy_hops: config.trustProxyHops,
+    client_ip: req.ip ?? null,
+    forwarded_for: req.headers["x-forwarded-for"] ?? null,
+    secure_cookies: config.isProduction,
+    uploads_dir: config.uploadsDir,
+    uploads_writable: uploadsWritable,
+    database,
+    pg_pool_max: config.pgPoolMax,
+    server_time: new Date().toISOString(),
+  });
+});
 
 const PERIODS = ["day", "week", "month"] as const;
 type Period = (typeof PERIODS)[number];

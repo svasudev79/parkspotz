@@ -1,11 +1,18 @@
-// Adds demo accounts and Bangalore parking spaces to the database in
-// DATABASE_URL. Safe to run repeatedly: it only inserts what is missing and
-// never changes or deletes existing rows.
+// Seeds the database in DATABASE_URL. Safe to run repeatedly.
+//   - Always: the default rental tiers, if there are none.
+//   - Unless SEED_DEMO_DATA=false: the demo accounts and ten Bangalore
+//     parking spaces. It only inserts what is missing; the one thing it
+//     changes on existing rows is a demo account's password, and only when
+//     DEMO_PASSWORD is set and differs.
+// The demo password comes from DEMO_PASSWORD and is never printed.
 import bcrypt from "bcryptjs";
+import { config, setInShell } from "../config";
 import { pool } from "../db";
+import { confirmDatabaseTarget, databaseTarget, passwordProblem } from "../safety";
 
-// Local demo logins, documented in the README. Not for a public deployment.
-const DEMO_PASSWORD = "parkspotz-demo";
+// The well-known local default. It is published in the README, so it is
+// refused for a production or remote database.
+const LOCAL_DEMO_PASSWORD = "parkspotz-demo";
 const DEMO_USERS = [
   { username: "demo_owner", role: "owner" },
   { username: "demo_customer", role: "customer" },
@@ -30,9 +37,46 @@ const SPACES: [string, string, number, number, string, string, number, number, s
   ["ITPL Visitor Parking", "ITPL Main Road, Whitefield, Bengaluru", 12.986, 77.737, "multilevel", "private", 120, 35, "07:00", "22:00"],
 ];
 
+async function seedTiers() {
+  // Rental tiers: add the defaults only if there are none yet.
+  const tiersAdded = await pool.query(
+    `INSERT INTO rental_tiers (name, min_slots, max_slots, monthly_fee)
+     SELECT * FROM (VALUES ('Small', 1, 20, 500), ('Medium', 21, 100, 1500), ('Large', 101, NULL, 3000))
+       AS defaults (name, min_slots, max_slots, monthly_fee)
+     WHERE NOT EXISTS (SELECT 1 FROM rental_tiers)`
+  );
+  if (tiersAdded.rowCount) console.log("Added the default rental tiers: Small, Medium, Large.");
+}
+
+// The password for the demo accounts, checked for where it is going.
+function demoPassword(): { password: string; explicit: boolean } {
+  const explicit = Boolean(process.env.DEMO_PASSWORD);
+  const password = process.env.DEMO_PASSWORD || LOCAL_DEMO_PASSWORD;
+  const remote = !databaseTarget(config.databaseUrl).isLocal;
+  if (config.isProduction || remote) {
+    if (remote && !setInShell("DEMO_PASSWORD")) {
+      throw new Error("For a remote database, pass DEMO_PASSWORD in the command's environment (or set SEED_DEMO_DATA=false)");
+    }
+    const problem = passwordProblem("DEMO_PASSWORD", "demo", password);
+    if (problem) throw new Error(`${problem}. The default demo password is public and must not be used here.`);
+  }
+  return { password, explicit };
+}
+
 async function main() {
-  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
+  console.log(confirmDatabaseTarget(config.databaseUrl, process.env.CONFIRM_REMOTE, "Seeding"));
+  const withDemoData = process.env.SEED_DEMO_DATA !== "false";
+  // Check the demo password before touching the database.
+  const { password, explicit } = withDemoData ? demoPassword() : { password: "", explicit: false };
+  await seedTiers();
+  if (!withDemoData) {
+    console.log("SEED_DEMO_DATA=false: no demo accounts or demo spaces were added.");
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
   let usersAdded = 0;
+  let passwordsUpdated = 0;
   for (const user of DEMO_USERS) {
     const result = await pool.query(
       `INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3)
@@ -40,7 +84,19 @@ async function main() {
       [user.username, passwordHash, user.role]
     );
     usersAdded += result.rowCount ?? 0;
+    if (result.rowCount === 0 && explicit) {
+      // The account already exists: bring its password in line with DEMO_PASSWORD.
+      const existing = await pool.query("SELECT id, password_hash FROM users WHERE username = $1 AND role = $2", [
+        user.username, user.role,
+      ]);
+      const row = existing.rows[0];
+      if (row && !(await bcrypt.compare(password, row.password_hash))) {
+        await pool.query("UPDATE users SET password_hash = $2 WHERE id = $1", [row.id, passwordHash]);
+        passwordsUpdated += 1;
+      }
+    }
   }
+  if (passwordsUpdated) console.log(`Updated the password of ${passwordsUpdated} demo account(s) to DEMO_PASSWORD.`);
 
   const owner = (await pool.query("SELECT id, role FROM users WHERE username = 'demo_owner'")).rows[0];
   if (owner.role !== "owner") throw new Error("demo_owner exists but is not an owner; not seeding spaces");
@@ -56,15 +112,6 @@ async function main() {
     );
     spacesAdded += result.rowCount ?? 0;
   }
-
-  // Rental tiers: add the defaults only if there are none yet.
-  const tiersAdded = await pool.query(
-    `INSERT INTO rental_tiers (name, min_slots, max_slots, monthly_fee)
-     SELECT * FROM (VALUES ('Small', 1, 20, 500), ('Medium', 21, 100, 1500), ('Large', 101, NULL, 3000))
-       AS defaults (name, min_slots, max_slots, monthly_fee)
-     WHERE NOT EXISTS (SELECT 1 FROM rental_tiers)`
-  );
-  if (tiersAdded.rowCount) console.log("Added the default rental tiers: Small, Medium, Large.");
 
   // A space's first month is rent-free, so brand-new demo spaces would have no
   // invoices to look at. Move the creation date of the seeded demo spaces
@@ -91,7 +138,11 @@ async function main() {
   if (attached.rowCount) console.log(`demo_attendant now works at ${ATTENDANT_SPACE}.`);
 
   console.log(`Seed done. Added ${usersAdded} demo account(s) and ${spacesAdded} parking space(s).`);
-  console.log(`Demo logins (password ${DEMO_PASSWORD}): demo_owner, demo_customer, demo_attendant`);
+  console.log(
+    `Demo logins: demo_owner, demo_customer, demo_attendant (password: ${
+      explicit ? "the value of DEMO_PASSWORD" : "the local default, see README"
+    })`
+  );
 }
 
 main()
