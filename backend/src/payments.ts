@@ -1,11 +1,13 @@
-// Payment provider calls. Two modes share one booking flow:
+// Payment provider calls, used for bookings and for rental invoices.
+// Two modes share one flow:
 //   mock     — no provider; the in-app test screen reports pay or fail.
 //   razorpay — a Razorpay order is created here and Checkout runs in the browser.
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { config } from "./config";
 
-// Creates the provider order for a booking and returns its id.
-export async function createOrder(bookingId: number, amountRupees: number): Promise<string> {
+// Creates the provider order for something to be paid and returns its id.
+// `receipt` is our own label for it, e.g. "booking_12" or "rental_7".
+export async function createOrder(receipt: string, amountRupees: number): Promise<string> {
   if (config.paymentMode === "mock") return `mock_order_${randomBytes(9).toString("hex")}`;
 
   const auth = Buffer.from(`${config.razorpayKeyId}:${config.razorpayKeySecret}`).toString("base64");
@@ -15,7 +17,7 @@ export async function createOrder(bookingId: number, amountRupees: number): Prom
     body: JSON.stringify({
       amount: Math.round(amountRupees * 100), // Razorpay amounts are in paise
       currency: "INR",
-      receipt: `booking_${bookingId}`,
+      receipt,
     }),
   });
   if (!res.ok) throw new Error(`Razorpay order creation failed with status ${res.status}`);

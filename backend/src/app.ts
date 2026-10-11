@@ -1,10 +1,12 @@
 import express from "express";
 import cookieParser from "cookie-parser";
 import { pool } from "./db";
+import { adminRouter } from "./routes/admin";
 import { authRouter } from "./routes/auth";
 import { bookingsRouter } from "./routes/bookings";
 import { gateRouter } from "./routes/gate";
 import { ownerRouter } from "./routes/owner";
+import { rentalRouter } from "./routes/rental";
 import { spacesRouter } from "./routes/spaces";
 import { verifyRouter } from "./routes/verify";
 import { visitsRouter } from "./routes/visits";
@@ -26,7 +28,9 @@ app.get("/health", async (_req, res) => {
 });
 
 app.use("/auth", authRouter);
+app.use("/owner/rental", rentalRouter);
 app.use("/owner", ownerRouter);
+app.use("/admin", adminRouter);
 app.use("/spaces", spacesRouter);
 app.use("/bookings", bookingsRouter);
 app.use("/verify", verifyRouter);

@@ -127,7 +127,7 @@ bookingsRouter.post("/", async (req, res) => {
   // provider is unreachable, release the slot again.
   let orderId: string;
   try {
-    orderId = await createOrder(bookingId, amount);
+    orderId = await createOrder(`booking_${bookingId}`, amount);
   } catch (err) {
     console.error(err instanceof Error ? err.message : "Payment order failed");
     await pool.query("UPDATE bookings SET status = 'cancelled' WHERE id = $1", [bookingId]);

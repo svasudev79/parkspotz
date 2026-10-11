@@ -57,6 +57,28 @@ async function main() {
     spacesAdded += result.rowCount ?? 0;
   }
 
+  // Rental tiers: add the defaults only if there are none yet.
+  const tiersAdded = await pool.query(
+    `INSERT INTO rental_tiers (name, min_slots, max_slots, monthly_fee)
+     SELECT * FROM (VALUES ('Small', 1, 20, 500), ('Medium', 21, 100, 1500), ('Large', 101, NULL, 3000))
+       AS defaults (name, min_slots, max_slots, monthly_fee)
+     WHERE NOT EXISTS (SELECT 1 FROM rental_tiers)`
+  );
+  if (tiersAdded.rowCount) console.log("Added the default rental tiers: Small, Medium, Large.");
+
+  // A space's first month is rent-free, so brand-new demo spaces would have no
+  // invoices to look at. Move the creation date of the seeded demo spaces
+  // (only those: the demo owner's spaces with the seeded names) into last
+  // month, unless they are already older than this month.
+  const backdated = await pool.query(
+    `UPDATE parking_spaces
+     SET created_at = date_trunc('month', now() AT TIME ZONE 'Asia/Kolkata') AT TIME ZONE 'Asia/Kolkata' - interval '15 days'
+     WHERE owner_id = $1 AND name = ANY($2::text[])
+       AND created_at >= date_trunc('month', now() AT TIME ZONE 'Asia/Kolkata') AT TIME ZONE 'Asia/Kolkata'`,
+    [owner.id, SPACES.map((space) => space[0])]
+  );
+  if (backdated.rowCount) console.log(`Dated ${backdated.rowCount} demo space(s) to last month so they have rental invoices.`);
+
   // Attach the demo attendant to its space, unless it is already attached somewhere.
   const attached = await pool.query(
     `INSERT INTO space_attendants (user_id, space_id)

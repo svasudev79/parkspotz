@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   id            SERIAL PRIMARY KEY,
   username      TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
-  role          TEXT NOT NULL CHECK (role IN ('customer', 'owner', 'attendant')),
+  role          TEXT NOT NULL CHECK (role IN ('customer', 'owner', 'attendant', 'admin')),
   -- false once an owner removes an attendant: the account can no longer log in
   is_active     BOOLEAN NOT NULL DEFAULT true,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -67,9 +67,10 @@ CREATE INDEX IF NOT EXISTS idx_payments_booking ON payments (booking_id);
 -- earlier version of this file without touching existing rows.
 -- ---------------------------------------------------------------------------
 
--- Allow the 'attendant' role on databases whose users table predates it.
+-- Allow the newer roles on databases whose users table predates them.
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
-ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('customer', 'owner', 'attendant'));
+ALTER TABLE users ADD CONSTRAINT users_role_check
+  CHECK (role IN ('customer', 'owner', 'attendant', 'admin'));
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
 
 -- An attendant works at exactly one parking space; a space may have several.
@@ -107,3 +108,50 @@ ALTER TABLE visits ADD COLUMN IF NOT EXISTS overstay_amount NUMERIC(10, 2) NOT N
 ALTER TABLE visits ADD COLUMN IF NOT EXISTS overstay_settlement TEXT
   CHECK (overstay_settlement IN ('none', 'cash', 'upi', 'waived'));
 ALTER TABLE visits ADD COLUMN IF NOT EXISTS overstay_waive_reason TEXT;
+
+-- ---------------------------------------------------------------------------
+-- Monthly rental that space owners pay ParkSpotZ for hosting a space.
+-- ---------------------------------------------------------------------------
+
+-- Fee by size. Tiers cover every slot count from 1 upward without gaps or
+-- overlaps (checked by the API when the admin edits them); max_slots is NULL
+-- for the last, open-ended tier.
+CREATE TABLE IF NOT EXISTS rental_tiers (
+  id          SERIAL PRIMARY KEY,
+  name        TEXT NOT NULL,
+  min_slots   INTEGER NOT NULL CHECK (min_slots >= 1),
+  max_slots   INTEGER CHECK (max_slots IS NULL OR max_slots >= min_slots),
+  monthly_fee NUMERIC(10, 2) NOT NULL CHECK (monthly_fee >= 0)
+);
+
+-- One invoice per space per calendar month (IST). The tier name, slot count
+-- and amount are copied in when the invoice is made, so later tier edits do
+-- not change it. "Overdue" is not stored: it means due and past due_date.
+CREATE TABLE IF NOT EXISTS rental_invoices (
+  id         SERIAL PRIMARY KEY,
+  space_id   INTEGER NOT NULL REFERENCES parking_spaces(id),
+  month      DATE NOT NULL CHECK (extract(day FROM month) = 1),
+  tier_name  TEXT NOT NULL,
+  slots      INTEGER NOT NULL,
+  amount     NUMERIC(10, 2) NOT NULL,
+  due_date   DATE NOT NULL,
+  status     TEXT NOT NULL DEFAULT 'due' CHECK (status IN ('due', 'paid')),
+  paid_at    TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (space_id, month)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rental_invoices_month ON rental_invoices (month);
+
+-- Payment attempts for rental invoices, kept apart from booking payments.
+CREATE TABLE IF NOT EXISTS rental_payments (
+  id                  SERIAL PRIMARY KEY,
+  invoice_id          INTEGER NOT NULL REFERENCES rental_invoices(id),
+  provider_order_id   TEXT UNIQUE NOT NULL,
+  provider_payment_id TEXT,
+  amount              NUMERIC(10, 2) NOT NULL,
+  status              TEXT NOT NULL,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_rental_payments_invoice ON rental_payments (invoice_id);
