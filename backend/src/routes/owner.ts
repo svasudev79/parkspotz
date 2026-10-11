@@ -1,27 +1,16 @@
 import { Router } from "express";
+import bcrypt from "bcryptjs";
 import { pool } from "../db";
+import { dayStartSql, parseDay } from "../gate";
 import { requireRole } from "../middleware/auth";
 import { parseId, toSpace } from "../spaces";
+import { normalizeUsername, validateCredentials } from "../validation";
 
 export const ownerRouter = Router();
 
 ownerRouter.use(requireRole("owner"));
 
 const PERIODS = ["day", "week", "month"];
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-// A "YYYY-MM-DD" query value, or null for "today in IST". undefined = invalid.
-function parseDay(value: unknown): string | null | undefined {
-  if (value === undefined || value === "") return null;
-  if (typeof value !== "string" || !DATE_PATTERN.test(value)) return undefined;
-  return Number.isNaN(new Date(`${value}T00:00:00Z`).getTime()) ? undefined : value;
-}
-
-// SQL for the IST calendar day in parameter `p` (today when it is null), as a
-// timestamp without time zone at midnight.
-const dayStartSql = (p: string) =>
-  `date_trunc('day', COALESCE(${p}::date::timestamp, now() AT TIME ZONE 'Asia/Kolkata'))`;
-
 // GET /owner/spaces — the logged-in owner's own parking spaces.
 ownerRouter.get("/spaces", async (req, res) => {
   const { rows } = await pool.query(
@@ -115,4 +104,97 @@ ownerRouter.get("/stats", async (req, res) => {
       revenue: Math.round(spaces.reduce((sum, row) => sum + row.revenue, 0) * 100) / 100,
     },
   });
+});
+
+// --- Attendants -------------------------------------------------------------
+// An owner creates gate attendant accounts for one of their spaces. Attendants
+// cannot sign up themselves.
+
+// The owner's space with this id, or null (also for another owner's space).
+async function ownSpaceId(value: unknown, ownerId: number): Promise<number | null> {
+  const id = typeof value === "string" ? parseId(value) : null;
+  if (!id) return null;
+  const { rows } = await pool.query("SELECT id FROM parking_spaces WHERE id = $1 AND owner_id = $2", [id, ownerId]);
+  return rows[0]?.id ?? null;
+}
+
+// GET /owner/spaces/:id/attendants
+ownerRouter.get("/spaces/:id/attendants", async (req, res) => {
+  const spaceId = await ownSpaceId(req.params.id, req.user!.id);
+  if (!spaceId) return res.status(404).json({ error: "Parking space not found" });
+
+  const { rows } = await pool.query(
+    `SELECT u.id, u.username, sa.created_at
+     FROM space_attendants sa JOIN users u ON u.id = sa.user_id
+     WHERE sa.space_id = $1 AND u.is_active ORDER BY u.username`,
+    [spaceId]
+  );
+  res.json({ attendants: rows });
+});
+
+// POST /owner/spaces/:id/attendants { username, password }
+ownerRouter.post("/spaces/:id/attendants", async (req, res) => {
+  const spaceId = await ownSpaceId(req.params.id, req.user!.id);
+  if (!spaceId) return res.status(404).json({ error: "Parking space not found" });
+
+  const username = normalizeUsername(req.body?.username);
+  const password = req.body?.password;
+  const problem = validateCredentials(username, password);
+  if (problem) return res.status(400).json({ error: problem });
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const created = await client.query(
+      `INSERT INTO users (username, password_hash, role) VALUES ($1, $2, 'attendant')
+       ON CONFLICT (username) DO NOTHING RETURNING id, username`,
+      [username, passwordHash]
+    );
+    if (created.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(409).json({ error: "That username is already taken" });
+    }
+    await client.query("INSERT INTO space_attendants (user_id, space_id) VALUES ($1, $2)", [
+      created.rows[0].id, spaceId,
+    ]);
+    await client.query("COMMIT");
+    res.status(201).json({ attendant: created.rows[0] });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+});
+
+// DELETE /owner/spaces/:id/attendants/:userId — remove an attendant.
+// The account is deactivated rather than deleted, so the vehicle log still
+// shows who recorded each entry and exit. It can no longer log in, and any
+// session it still has stops working because it is no longer attached to a space.
+ownerRouter.delete("/spaces/:id/attendants/:userId", async (req, res) => {
+  const spaceId = await ownSpaceId(req.params.id, req.user!.id);
+  const userId = parseId(req.params.userId);
+  if (!spaceId || !userId) return res.status(404).json({ error: "Attendant not found" });
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const removed = await client.query(
+      "DELETE FROM space_attendants WHERE user_id = $1 AND space_id = $2 RETURNING user_id",
+      [userId, spaceId]
+    );
+    if (removed.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Attendant not found" });
+    }
+    await client.query("UPDATE users SET is_active = false WHERE id = $1 AND role = 'attendant'", [userId]);
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+  res.json({ ok: true });
 });

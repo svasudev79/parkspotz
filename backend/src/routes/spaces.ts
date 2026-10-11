@@ -2,7 +2,7 @@ import { Router } from "express";
 import { overlappingBookingsSql, withinOpeningHoursSql } from "../availability";
 import { config } from "../config";
 import { pool } from "../db";
-import { requireAuth, requireRole } from "../middleware/auth";
+import { requireRole } from "../middleware/auth";
 import { parseId, toSpace, validateSpace } from "../spaces";
 
 export const spacesRouter = Router();
@@ -25,7 +25,7 @@ function parseDate(value: unknown): Date | null {
 // GET /spaces?lat&lng&radius&start&end — active spaces within `radius` metres,
 // nearest first, with slots available for the window start..end (ISO times).
 // Spaces closed for that window are still listed, with is_open = false.
-spacesRouter.get("/", requireAuth, async (req, res) => {
+spacesRouter.get("/", requireRole("customer", "owner"), async (req, res) => {
   const lat = Number(req.query.lat);
   const lng = Number(req.query.lng);
   const radius = Number(req.query.radius);
@@ -64,7 +64,7 @@ spacesRouter.get("/", requireAuth, async (req, res) => {
 });
 
 // GET /spaces/:id — one space. Inactive spaces are visible to their owner only.
-spacesRouter.get("/:id", requireAuth, async (req, res) => {
+spacesRouter.get("/:id", requireRole("customer", "owner"), async (req, res) => {
   const id = parseId(req.params.id);
   const { rows } = id ? await pool.query("SELECT * FROM parking_spaces WHERE id = $1", [id]) : { rows: [] };
   const row = rows[0];

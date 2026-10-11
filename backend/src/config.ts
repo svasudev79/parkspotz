@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { resolve } from "node:path";
 
 function required(name: string): string {
   const value = process.env[name];
@@ -28,6 +29,10 @@ export const config = {
   jwtSecret: required("JWT_SECRET"),
   // Minutes an unpaid (pending) booking keeps its slot.
   bookingHoldMinutes: Number(process.env.BOOKING_HOLD_MINUTES ?? 10),
+  // Minutes before a booking's start time from which entry may be recorded.
+  entryGraceMinutes: Number(process.env.ENTRY_GRACE_MINUTES ?? 15),
+  // Folder for entry photos. Never served directly; see routes/visits.ts.
+  uploadsDir: resolve(process.env.UPLOADS_DIR ?? "uploads"),
   // Public address of the frontend; receipt QR codes link to it.
   appBaseUrl: (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(/\/+$/, ""),
   paymentMode: paymentMode(),

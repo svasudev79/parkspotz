@@ -2,7 +2,7 @@ import type { CookieOptions } from "express";
 import jwt from "jsonwebtoken";
 import { config } from "./config";
 
-export type Role = "customer" | "owner";
+export type Role = "customer" | "owner" | "attendant";
 
 export interface SessionUser {
   id: number;
@@ -38,7 +38,7 @@ export function verifySession(token: unknown): SessionUser | null {
     const id = Number(payload.sub);
     const { username, role } = payload;
     if (!Number.isInteger(id) || typeof username !== "string") return null;
-    if (role !== "customer" && role !== "owner") return null;
+    if (role !== "customer" && role !== "owner" && role !== "attendant") return null;
     return { id, username, role };
   } catch {
     return null;

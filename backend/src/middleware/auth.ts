@@ -17,12 +17,13 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-// 401 if not logged in, 403 if logged in with a different role.
-export function requireRole(role: Role) {
+// 401 if not logged in, 403 if logged in with a role that is not listed.
+export function requireRole(...roles: Role[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     requireAuth(req, res, () => {
-      if (req.user?.role !== role) {
-        return res.status(403).json({ error: `Only ${role}s can do this` });
+      if (!req.user || !roles.includes(req.user.role)) {
+        const message = roles.length === 1 ? `Only ${roles[0]}s can do this` : "You do not have access to this";
+        return res.status(403).json({ error: message });
       }
       next();
     });

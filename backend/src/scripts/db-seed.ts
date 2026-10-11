@@ -9,7 +9,10 @@ const DEMO_PASSWORD = "parkspotz-demo";
 const DEMO_USERS = [
   { username: "demo_owner", role: "owner" },
   { username: "demo_customer", role: "customer" },
+  { username: "demo_attendant", role: "attendant" },
 ];
+// The demo attendant works the gate at this seeded space.
+const ATTENDANT_SPACE = "MG Road Metro Parking";
 
 // name, address, lat, lng, type, ownership, slots, price per hour, opens, closes
 const SPACES: [string, string, number, number, string, string, number, number, string, string][] = [
@@ -54,8 +57,19 @@ async function main() {
     spacesAdded += result.rowCount ?? 0;
   }
 
+  // Attach the demo attendant to its space, unless it is already attached somewhere.
+  const attached = await pool.query(
+    `INSERT INTO space_attendants (user_id, space_id)
+     SELECT u.id, s.id FROM users u, parking_spaces s
+     WHERE u.username = 'demo_attendant' AND u.role = 'attendant'
+       AND s.owner_id = $1 AND s.name = $2
+     ON CONFLICT (user_id) DO NOTHING`,
+    [owner.id, ATTENDANT_SPACE]
+  );
+  if (attached.rowCount) console.log(`demo_attendant now works at ${ATTENDANT_SPACE}.`);
+
   console.log(`Seed done. Added ${usersAdded} demo account(s) and ${spacesAdded} parking space(s).`);
-  console.log(`Demo logins: demo_owner / ${DEMO_PASSWORD} and demo_customer / ${DEMO_PASSWORD}`);
+  console.log(`Demo logins (password ${DEMO_PASSWORD}): demo_owner, demo_customer, demo_attendant`);
 }
 
 main()

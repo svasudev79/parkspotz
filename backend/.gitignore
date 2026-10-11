@@ -1,3 +1,5 @@
 node_modules/
 dist/
 .env
+# entry photos taken at the gate
+uploads/

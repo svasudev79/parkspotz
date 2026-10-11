@@ -6,7 +6,9 @@ CREATE TABLE IF NOT EXISTS users (
   id            SERIAL PRIMARY KEY,
   username      TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
-  role          TEXT NOT NULL CHECK (role IN ('customer', 'owner')),
+  role          TEXT NOT NULL CHECK (role IN ('customer', 'owner', 'attendant')),
+  -- false once an owner removes an attendant: the account can no longer log in
+  is_active     BOOLEAN NOT NULL DEFAULT true,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -58,3 +60,41 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_payments_booking ON payments (booking_id);
+
+-- ---------------------------------------------------------------------------
+-- Gate attendants and the vehicle log.
+-- Everything below is additive, so it also upgrades a database created by an
+-- earlier version of this file without touching existing rows.
+-- ---------------------------------------------------------------------------
+
+-- Allow the 'attendant' role on databases whose users table predates it.
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('customer', 'owner', 'attendant'));
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
+
+-- An attendant works at exactly one parking space; a space may have several.
+CREATE TABLE IF NOT EXISTS space_attendants (
+  user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  space_id   INTEGER NOT NULL REFERENCES parking_spaces(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_space_attendants_space ON space_attendants (space_id);
+
+-- One row per vehicle visit. A booking can be used for one visit only
+-- (booking_id is unique), which also makes recording entry race-safe.
+CREATE TABLE IF NOT EXISTS visits (
+  id             SERIAL PRIMARY KEY,
+  space_id       INTEGER NOT NULL REFERENCES parking_spaces(id),
+  booking_id     INTEGER NOT NULL UNIQUE REFERENCES bookings(id),
+  vehicle_number TEXT,
+  entry_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  entry_by       INTEGER NOT NULL REFERENCES users(id),
+  -- File name of the entry photo inside the uploads folder, if one was taken.
+  entry_photo    TEXT,
+  exit_at        TIMESTAMPTZ,
+  exit_by        INTEGER REFERENCES users(id),
+  CHECK (exit_at IS NULL OR exit_at >= entry_at)
+);
+
+CREATE INDEX IF NOT EXISTS idx_visits_space_entry ON visits (space_id, entry_at);

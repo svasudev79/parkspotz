@@ -11,7 +11,7 @@
     "db:start": "/Applications/Postgres.app/Contents/Versions/latest/bin/pg_ctl -D ../.localdb/data -l ../.localdb/postgres.log -w start",
     "db:stop": "/Applications/Postgres.app/Contents/Versions/latest/bin/pg_ctl -D ../.localdb/data stop",
     "db:seed": "tsx src/scripts/db-seed.ts",
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "node --import tsx --test --test-concurrency=1 test/*.test.ts"
   },
   "keywords": [],
   "author": "",

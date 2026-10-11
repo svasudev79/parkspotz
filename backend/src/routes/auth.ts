@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { pool } from "../db";
 import { requireAuth } from "../middleware/auth";
 import { SESSION_COOKIE, sessionCookieOptions, signSession, type SessionUser } from "../session";
-import { isRole, normalizeUsername, validateSignup } from "../validation";
+import { isSignupRole, normalizeUsername, validateSignup } from "../validation";
 
 export const authRouter = Router();
 
@@ -17,7 +17,7 @@ authRouter.post("/signup", async (req, res) => {
   const username = normalizeUsername(req.body?.username);
   const { password, role } = req.body ?? {};
   const problem = validateSignup(username, password, role);
-  if (problem || !isRole(role)) return res.status(400).json({ error: problem });
+  if (problem || !isSignupRole(role)) return res.status(400).json({ error: problem });
 
   const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
   try {
@@ -46,12 +46,13 @@ authRouter.post("/login", async (req, res) => {
   }
 
   const { rows } = await pool.query(
-    "SELECT id, username, role, password_hash FROM users WHERE username = $1",
+    "SELECT id, username, role, password_hash, is_active FROM users WHERE username = $1",
     [username]
   );
   const row = rows[0];
   const matches = await bcrypt.compare(password, row?.password_hash ?? DUMMY_HASH);
-  if (!row || !matches) {
+  // A removed attendant (is_active = false) gets the same answer as a wrong password.
+  if (!row || !matches || !row.is_active) {
     return res.status(401).json({ error: "Wrong username or password" });
   }
 
@@ -69,7 +70,7 @@ authRouter.post("/logout", (_req, res) => {
 
 // GET /auth/me — the logged-in user, re-read from the database.
 authRouter.get("/me", requireAuth, async (req, res) => {
-  const { rows } = await pool.query("SELECT id, username, role FROM users WHERE id = $1", [
+  const { rows } = await pool.query("SELECT id, username, role FROM users WHERE id = $1 AND is_active", [
     req.user!.id,
   ]);
   if (rows.length === 0) return res.status(401).json({ error: "Please log in" });
