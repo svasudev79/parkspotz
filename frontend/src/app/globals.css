@@ -16,3 +16,10 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
+
+/* Printing a receipt: plain white page, no app chrome (see print:hidden). */
+@media print {
+  body {
+    background: #ffffff;
+  }
+}

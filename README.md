@@ -71,6 +71,9 @@ Open http://localhost:3000. To check that the frontend reaches the API and the d
 | `backend/.env` | `JWT_SECRET` | Signs the login cookie; any long random string |
 | `backend/.env` | `PORT` | API port, default 8080 |
 | `backend/.env` | `BOOKING_HOLD_MINUTES` | How long an unpaid booking keeps its slot, default 10 |
+| `backend/.env` | `APP_BASE_URL` | Public address of the frontend, default `http://localhost:3000`. Receipt QR codes link to `<APP_BASE_URL>/verify/<token>` |
+| `backend/.env` | `PAYMENT_MODE` | `mock` or `razorpay` (see Payments below) |
+| `backend/.env` | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | Razorpay test keys; only needed for `razorpay` mode |
 | `frontend/.env.local` | `API_URL` | Where `/api/*` is forwarded, default `http://localhost:8080`. Restart the frontend after changing it |
 | `frontend/.env.local` | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Google Maps key; may be left empty (see below). Restart the frontend after changing it |
 
@@ -89,11 +92,22 @@ The app works without a key: search results show as a list, and destinations and
 
 With a key in `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, the search screen shows a map with a pin per parking space, the destination box becomes Google Places search, and the add-space form gets address search and a draggable pin. In Google Cloud the key needs **Maps JavaScript API** and **Places API (New)** enabled.
 
+### Payments
+
+`PAYMENT_MODE` in `backend/.env` chooses how bookings are paid:
+
+- `mock` (the default when no Razorpay keys are set): the app shows its own "Test payment" screen with **Pay** and **Fail the payment** buttons. No payment provider is contacted.
+- `razorpay`: the API creates a Razorpay order and the browser opens Razorpay Checkout. Put your Razorpay **test** key id and key secret in `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET`, then restart the API. The secret stays on the server; the API checks each payment's signature before confirming a booking.
+
+Both modes use the same steps: booking a space holds a slot for `BOOKING_HOLD_MINUTES` as "awaiting payment", a verified payment confirms it, and a failed mock payment cancels it. A booking that is not paid within the hold time expires and its slot becomes free again.
+
 ## What works so far
 
 - Sign up as a driver or a space owner, log in, log out (username and password; the session is an httpOnly cookie).
 - Drivers land on Find parking (`/search`), owners on My spaces (`/owner/spaces`). Visitors who are not logged in are sent to the login page, and each role is kept out of the other role's pages.
 - Owners add and edit parking spaces: name, address, location, type, ownership, number of slots, price per hour, opening hours, and whether the space is listed.
-- Drivers search near a destination within 500 m, 1 km or 2 km for a date, start time and duration. Results are sorted by distance and show the price and how many slots are free for that time. A space that is closed for the chosen time is still shown, marked "Closed at this time".
-- Each result opens a space details page. Booking and payment are not built yet.
+- Drivers search near a destination within 500 m, 1 km or 2 km for a date, start time and duration. Results are sorted by distance and show the price and how many slots are free for that time. A space that is closed for the chosen time is still shown, marked "Closed at this time". The search is kept in the page address, so going back to it or reloading shows the same results.
+- Drivers book a space for the searched time (30 minutes to 24 hours, inside the space's opening hours, starting in the future) and pay. Two drivers cannot take the same last slot.
+- After payment the driver gets a receipt with a QR code, which can be printed or saved as a PDF. My bookings lists every booking with its status and receipt.
+- The page the QR code links to (`/verify/...`, for owners to check a booking at the entrance) is not built yet.
 - All times are entered and shown in IST.
