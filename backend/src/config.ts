@@ -11,4 +11,6 @@ export const config = {
   isProduction: process.env.NODE_ENV === "production",
   databaseUrl: required("DATABASE_URL"),
   jwtSecret: required("JWT_SECRET"),
+  // Minutes an unpaid (pending) booking keeps its slot.
+  bookingHoldMinutes: Number(process.env.BOOKING_HOLD_MINUTES ?? 10),
 };

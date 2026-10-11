@@ -30,12 +30,15 @@ pg_ctl -D .localdb/data -l .localdb/postgres.log -w start
 createdb -h 127.0.0.1 -p 5433 -U parkspotz parkspotz
 ```
 
-It accepts connections from this computer only, without a password, so use it for development data only. Start and stop it with:
+It accepts connections from this computer only, without a password, so use it for development data only. Start it before running the app and stop it when you are done:
 
 ```bash
-pg_ctl -D .localdb/data -l .localdb/postgres.log -w start
-pg_ctl -D .localdb/data stop
+cd backend
+npm run db:start
+npm run db:stop
 ```
+
+These two scripts call Postgres.app's `pg_ctl` at `/Applications/Postgres.app/Contents/Versions/latest/bin`; edit them in `backend/package.json` if your Postgres tools live elsewhere.
 
 ### 2. API
 
@@ -67,8 +70,9 @@ Open http://localhost:3000. To check that the frontend reaches the API and the d
 | `backend/.env` | `DATABASE_URL` | Postgres connection string |
 | `backend/.env` | `JWT_SECRET` | Signs the login cookie; any long random string |
 | `backend/.env` | `PORT` | API port, default 8080 |
+| `backend/.env` | `BOOKING_HOLD_MINUTES` | How long an unpaid booking keeps its slot, default 10 |
 | `frontend/.env.local` | `API_URL` | Where `/api/*` is forwarded, default `http://localhost:8080`. Restart the frontend after changing it |
-| `frontend/.env.local` | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Google Maps key; may be left empty |
+| `frontend/.env.local` | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Google Maps key; may be left empty (see below). Restart the frontend after changing it |
 
 `backend/.env` and `frontend/.env.local` hold secrets and are ignored by git. Never commit them.
 
@@ -79,7 +83,17 @@ cd backend && npm run build                    # type-checks and compiles the AP
 cd frontend && npm run lint && npm run build   # lints and builds the web app
 ```
 
+### Google Maps key
+
+The app works without a key: search results show as a list, and destinations and space locations are chosen from a built-in list of Bangalore landmarks (owners can also type latitude and longitude).
+
+With a key in `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, the search screen shows a map with a pin per parking space, the destination box becomes Google Places search, and the add-space form gets address search and a draggable pin. In Google Cloud the key needs **Maps JavaScript API** and **Places API (New)** enabled.
+
 ## What works so far
 
 - Sign up as a driver or a space owner, log in, log out (username and password; the session is an httpOnly cookie).
-- Drivers land on Find parking (`/search`), owners on My spaces (`/owner/spaces`). Both pages are placeholders for now. Visitors who are not logged in are sent to the login page, and each role is kept out of the other role's pages.
+- Drivers land on Find parking (`/search`), owners on My spaces (`/owner/spaces`). Visitors who are not logged in are sent to the login page, and each role is kept out of the other role's pages.
+- Owners add and edit parking spaces: name, address, location, type, ownership, number of slots, price per hour, opening hours, and whether the space is listed.
+- Drivers search near a destination within 500 m, 1 km or 2 km for a date, start time and duration. Results are sorted by distance and show the price and how many slots are free for that time. A space that is closed for the chosen time is still shown, marked "Closed at this time".
+- Each result opens a space details page. Booking and payment are not built yet.
+- All times are entered and shown in IST.

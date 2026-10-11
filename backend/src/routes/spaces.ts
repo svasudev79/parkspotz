@@ -1,9 +1,67 @@
 import { Router } from "express";
+import { overlappingBookingsSql, withinOpeningHoursSql } from "../availability";
+import { config } from "../config";
 import { pool } from "../db";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { parseId, toSpace, validateSpace } from "../spaces";
 
 export const spacesRouter = Router();
+
+const MAX_RADIUS_M = 50_000;
+const EARTH_RADIUS_M = 6_371_000;
+
+// Great-circle (Haversine) distance in metres from ($1 lat, $2 lng) to space `s`.
+const DISTANCE_SQL = `(${EARTH_RADIUS_M} * 2 * asin(sqrt(
+    power(sin(radians(s.lat - $1) / 2), 2) +
+    cos(radians($1)) * cos(radians(s.lat)) * power(sin(radians(s.lng - $2) / 2), 2)
+  )))`;
+
+function parseDate(value: unknown): Date | null {
+  if (typeof value !== "string") return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+// GET /spaces?lat&lng&radius&start&end — active spaces within `radius` metres,
+// nearest first, with slots available for the window start..end (ISO times).
+// Spaces closed for that window are still listed, with is_open = false.
+spacesRouter.get("/", requireAuth, async (req, res) => {
+  const lat = Number(req.query.lat);
+  const lng = Number(req.query.lng);
+  const radius = Number(req.query.radius);
+  const start = parseDate(req.query.start);
+  const end = parseDate(req.query.end);
+
+  if (req.query.lat === undefined || !Number.isFinite(lat) || lat < -90 || lat > 90) {
+    return res.status(400).json({ error: "lat must be between -90 and 90" });
+  }
+  if (req.query.lng === undefined || !Number.isFinite(lng) || lng < -180 || lng > 180) {
+    return res.status(400).json({ error: "lng must be between -180 and 180" });
+  }
+  if (!Number.isFinite(radius) || radius <= 0 || radius > MAX_RADIUS_M) {
+    return res.status(400).json({ error: `radius must be between 1 and ${MAX_RADIUS_M} metres` });
+  }
+  if (!start || !end) return res.status(400).json({ error: "start and end must be valid date-times" });
+  if (end <= start) return res.status(400).json({ error: "end must be after start" });
+
+  const { rows } = await pool.query(
+    `SELECT * FROM (
+       SELECT s.*,
+              ${DISTANCE_SQL} AS distance_m,
+              GREATEST(s.total_slots - ${overlappingBookingsSql("s.id", "$4", "$5", "$6")}, 0) AS slots_available,
+              ${withinOpeningHoursSql("$4", "$5")} AS is_open
+       FROM parking_spaces s
+       WHERE s.is_active
+     ) nearby
+     WHERE distance_m <= $3
+     ORDER BY distance_m`,
+    [lat, lng, radius, start.toISOString(), end.toISOString(), config.bookingHoldMinutes]
+  );
+
+  res.json({
+    spaces: rows.map((row) => ({ ...toSpace(row), distance_m: Math.round(row.distance_m) })),
+  });
+});
 
 // GET /spaces/:id — one space. Inactive spaces are visible to their owner only.
 spacesRouter.get("/:id", requireAuth, async (req, res) => {
