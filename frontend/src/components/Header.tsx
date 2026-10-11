@@ -11,6 +11,12 @@ const NAV: Record<Role, { href: string; label: string }[]> = {
   owner: [
     { href: "/owner/spaces", label: "My spaces" },
     { href: "/owner/stats", label: "Stats" },
+    { href: "/owner/rental", label: "Rental" },
+  ],
+  admin: [
+    { href: "/admin", label: "Dashboard" },
+    { href: "/admin/spaces", label: "Spaces" },
+    { href: "/admin/rental", label: "Rental" },
   ],
   attendant: [
     { href: "/attendant", label: "Gate" },

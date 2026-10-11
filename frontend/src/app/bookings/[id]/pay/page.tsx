@@ -31,7 +31,19 @@ export default async function PayPage(props: PageProps<"/bookings/[id]/pay">) {
           <p className="text-sm text-slate-600">
             Your slot is held until {formatTime(booking.hold_expires_at)} IST. Pay before then to keep it.
           </p>
-          <PaymentPanel booking={booking} payment={payment} />
+          <PaymentPanel
+            payment={payment}
+            target={{
+              amount: booking.amount,
+              description: `${booking.reference} · ${booking.space_name}`,
+              apiBase: `/bookings/${booking.id}`,
+              doneHref: `/bookings/${booking.id}`,
+              dismissNote: `Payment not completed. Your slot is held until ${formatTime(booking.hold_expires_at)} IST; pay before then to keep it.`,
+              failedMessage: "Payment failed. The booking was cancelled and the slot has been released.",
+              backHref: `/spaces/${booking.space_id}`,
+              backLabel: "Back to the space",
+            }}
+          />
         </>
       ) : (
         <>

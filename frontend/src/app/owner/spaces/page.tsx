@@ -10,11 +10,13 @@ export const metadata: Metadata = { title: "My spaces · ParkSpotZ" };
 
 export default async function OwnerSpacesPage() {
   await requireRole("owner");
-  const [data, today] = await Promise.all([
+  const [data, today, rental] = await Promise.all([
     apiGet<{ spaces: Space[] }>("/owner/spaces"),
     apiGet<{ bookings: OwnerBooking[] }>("/owner/bookings"),
+    apiGet<{ summary: { due_count: number; overdue_count: number; due_amount: number } }>("/owner/rental"),
   ]);
   const spaces = data?.spaces ?? [];
+  const rent = rental?.summary;
   const todaysBookings = today?.bookings ?? [];
 
   return (
@@ -25,6 +27,18 @@ export default async function OwnerSpacesPage() {
           Add space
         </Link>
       </div>
+
+      {rent && rent.due_count > 0 && (
+        <Link
+          href="/owner/rental"
+          className={`mt-4 block rounded-lg px-3 py-3 text-base font-medium underline ${
+            rent.overdue_count > 0 ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-900"
+          }`}
+        >
+          Rental: {formatRupees(rent.due_amount)} {rent.overdue_count > 0 ? "to pay, some of it overdue" : "due"} — view and
+          pay
+        </Link>
+      )}
 
       {!data && <p className="mt-6 text-red-700">Could not load your spaces. Please refresh the page.</p>}
 

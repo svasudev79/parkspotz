@@ -71,3 +71,21 @@ export function formatDay(date: string): string {
     year: "numeric",
   }).format(new Date(`${date}T00:00:00Z`));
 }
+
+// "2026-10" -> "October 2026"
+export function formatMonth(month: string): string {
+  return new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", month: "long", year: "numeric" }).format(
+    new Date(`${month}-01T00:00:00Z`)
+  );
+}
+
+// "2026-10-07" or an ISO time -> "7 Oct 2026" (IST for ISO times)
+export function formatDate(value: string): string {
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: dateOnly ? "UTC" : IST,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(dateOnly ? `${value}T00:00:00Z` : value));
+}

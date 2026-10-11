@@ -1,4 +1,4 @@
-export type Role = "customer" | "owner" | "attendant";
+export type Role = "customer" | "owner" | "attendant" | "admin";
 
 export interface User {
   id: number;
@@ -9,6 +9,7 @@ export interface User {
 // Where each role lands after logging in.
 export function homeFor(role: Role): string {
   if (role === "owner") return "/owner/spaces";
+  if (role === "admin") return "/admin";
   return role === "attendant" ? "/attendant" : "/search";
 }
 
@@ -172,4 +173,69 @@ export interface OwnerStats {
     overstay_waived: number;
   }[];
   total: { bookings: number; hours: number; revenue: number; overstay_collected: number; overstay_waived: number };
+}
+
+// --- Monthly rental and the platform admin -----------------------------------
+
+export interface RentalTier {
+  name: string;
+  min_slots: number;
+  max_slots: number | null; // null = no upper limit
+  monthly_fee: number;
+}
+
+export interface RentalInvoice {
+  id: number;
+  reference: string; // e.g. "RNT-000012"
+  space_id: number;
+  space_name: string;
+  owner: string;
+  month: string; // "YYYY-MM"
+  tier_name: string;
+  slots: number;
+  amount: number;
+  due_date: string; // "YYYY-MM-DD"
+  status: "due" | "paid";
+  overdue: boolean; // due and past the due date
+  paid_at: string | null;
+}
+
+export interface UsageFigure {
+  booked_hours: number;
+  available_hours: number;
+  percent: number;
+}
+
+export type RentalStatus = "paid" | "due" | "overdue" | "free" | "none";
+
+export interface AdminDashboard {
+  spaces: { total: number; active: number; inactive: number; added_this_month: number };
+  users: { owners: number; attendants: number; customers: number };
+  slots: { total: number; by_tier: (RentalTier & { spaces: number; slots: number })[] };
+  in_use: { vehicles_inside: number; slots_booked_now: number };
+  utilisation: Record<"day" | "week" | "month", UsageFigure>;
+  rental: { month: string; invoiced: number; collected: number; outstanding: number; overdue_count: number };
+  bookings: Record<"day" | "week" | "month", { count: number; revenue: number }>;
+}
+
+export interface AdminSpace {
+  id: number;
+  name: string;
+  owner: string;
+  address: string;
+  total_slots: number;
+  tier: string | null;
+  is_active: boolean;
+  created_at: string;
+  bookings_month: number;
+  utilisation_month: UsageFigure;
+  rental_status: RentalStatus;
+}
+
+export interface AdminRental {
+  month: string;
+  status: "all" | "due" | "paid" | "overdue";
+  tiers: RentalTier[];
+  invoices: RentalInvoice[];
+  totals: { invoices: number; invoiced: number; collected: number; outstanding: number; overdue_count: number };
 }

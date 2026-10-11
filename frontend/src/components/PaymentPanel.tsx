@@ -4,15 +4,27 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { formatRupees, formatTime } from "@/lib/format";
+import { formatRupees } from "@/lib/format";
 import { openRazorpayCheckout, type RazorpaySuccess } from "@/lib/razorpay";
-import type { Booking, PaymentInfo } from "@/lib/types";
+import type { PaymentInfo } from "@/lib/types";
 import { errorClass, primaryButtonClass, secondaryButtonClass } from "./ui";
 
-// Pays for a pending booking. In mock mode this is an in-app test screen; in
-// razorpay mode it opens Razorpay Checkout. Both finish through the same
-// /bookings/:id/confirm call.
-export function PaymentPanel({ booking, payment }: { booking: Booking; payment: PaymentInfo }) {
+// What is being paid, and where the API calls and links for it go.
+export interface PayTarget {
+  amount: number;
+  description: string; // shown in Razorpay Checkout
+  apiBase: string; // confirm is POST `${apiBase}/confirm`, mock failure POST `${apiBase}/fail`
+  doneHref: string; // where to go once paid
+  dismissNote: string; // shown when Razorpay Checkout is closed without paying
+  failedMessage: string; // shown after a failed mock payment
+  backHref: string;
+  backLabel: string;
+}
+
+// Pays for something (a booking or a rental invoice). In mock mode this is an
+// in-app test screen; in razorpay mode it opens Razorpay Checkout. Both finish
+// through the same `${apiBase}/confirm` call, where the API verifies the payment.
+export function PaymentPanel({ target, payment }: { target: PayTarget; payment: PaymentInfo }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -23,8 +35,8 @@ export function PaymentPanel({ booking, payment }: { booking: Booking; payment: 
     setError("");
     setBusy(true);
     try {
-      await api(`/bookings/${booking.id}/confirm`, { method: "POST", body });
-      router.replace(`/bookings/${booking.id}`);
+      await api(`${target.apiBase}/confirm`, { method: "POST", body });
+      router.replace(target.doneHref);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "The payment could not be confirmed");
@@ -32,12 +44,12 @@ export function PaymentPanel({ booking, payment }: { booking: Booking; payment: 
     }
   }
 
-  // Mock mode only: report a failed payment, which cancels the booking.
+  // Mock mode only: report a failed payment.
   async function failMock() {
     setError("");
     setBusy(true);
     try {
-      await api(`/bookings/${booking.id}/fail`, { method: "POST" });
+      await api(`${target.apiBase}/fail`, { method: "POST" });
       setFailed(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -50,24 +62,21 @@ export function PaymentPanel({ booking, payment }: { booking: Booking; payment: 
     setError("");
     setNotice("");
     if (!payment.key_id || !payment.order_id) {
-      setError("Payment is not set up for this booking. Please book again.");
+      setError("The payment could not be started. Please try again.");
       return;
     }
     try {
       await openRazorpayCheckout(
         {
           key: payment.key_id,
-          amount: Math.round(booking.amount * 100),
+          amount: Math.round(target.amount * 100),
           currency: payment.currency,
           name: "ParkSpotZ",
-          description: `${booking.reference} · ${booking.space_name}`,
+          description: target.description,
           order_id: payment.order_id,
           handler: (response: RazorpaySuccess) => confirm(response),
           modal: {
-            ondismiss: () =>
-              setNotice(
-                `Payment not completed. Your slot is held until ${formatTime(booking.hold_expires_at)} IST; pay before then to keep it.`
-              ),
+            ondismiss: () => setNotice(target.dismissNote),
           },
           theme: { color: "#059669" },
         },
@@ -82,10 +91,10 @@ export function PaymentPanel({ booking, payment }: { booking: Booking; payment: 
     return (
       <div className="flex flex-col gap-3">
         <p role="alert" className={errorClass}>
-          Payment failed. The booking was cancelled and the slot has been released.
+          {target.failedMessage}
         </p>
-        <Link href={`/spaces/${booking.space_id}`} className={secondaryButtonClass}>
-          Back to the space
+        <Link href={target.backHref} className={secondaryButtonClass}>
+          {target.backLabel}
         </Link>
       </div>
     );
@@ -107,7 +116,7 @@ export function PaymentPanel({ booking, payment }: { booking: Booking; payment: 
       <div className="flex flex-col gap-3">
         {messages}
         <button type="button" disabled={busy} onClick={payWithRazorpay} className={primaryButtonClass}>
-          {busy ? "Confirming…" : `Pay ${formatRupees(booking.amount)} with Razorpay`}
+          {busy ? "Confirming…" : `Pay ${formatRupees(target.amount)} with Razorpay`}
         </button>
       </div>
     );
@@ -127,7 +136,7 @@ export function PaymentPanel({ booking, payment }: { booking: Booking; payment: 
           onClick={() => confirm({ mock_payment_id: `mock_pay_${Date.now().toString(36)}` })}
           className={primaryButtonClass}
         >
-          Pay {formatRupees(booking.amount)}
+          Pay {formatRupees(target.amount)}
         </button>
         <button type="button" disabled={busy} onClick={failMock} className={secondaryButtonClass}>
           Fail the payment

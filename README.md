@@ -59,7 +59,8 @@ cp .env.example .env.local
 cd backend
 npm run db:start          # start the repo-local Postgres
 npm run db:setup          # create the tables; safe to run again
-npm run db:seed           # add demo accounts and parking spaces; safe to run again
+npm run db:seed           # add demo accounts, parking spaces and rental tiers; safe to run again
+npm run admin:create      # create the platform admin from ADMIN_USERNAME / ADMIN_PASSWORD in .env
 npm run dev               # API on http://localhost:8080
 ```
 
@@ -77,6 +78,7 @@ Open http://localhost:3000 and log in with a demo account:
 | Customer | `demo_customer` | `parkspotz-demo` |
 | Space owner | `demo_owner` | `parkspotz-demo` |
 | Gate attendant (at MG Road Metro Parking) | `demo_attendant` | `parkspotz-demo` |
+| Platform admin | `admin` | in `backend/.env` as `ADMIN_PASSWORD` (see Platform admin below) |
 
 These accounts exist only in your local database. You can also sign up new accounts.
 
@@ -97,7 +99,7 @@ npm run db:stop
 
 ## Seed data
 
-`npm run db:seed` (in `backend/`) adds the demo accounts (owner, customer, and a gate attendant attached to MG Road Metro Parking) and ten parking spaces owned by `demo_owner`: four near MG Road Metro at different distances, and one each near Cubbon Park, Indiranagar, Koramangala Forum Mall, Majestic, Jayanagar 4th Block and Whitefield ITPL. It only adds what is missing and never changes or removes existing data.
+`npm run db:seed` (in `backend/`) adds the demo accounts (owner, customer, and a gate attendant attached to MG Road Metro Parking) and ten parking spaces owned by `demo_owner`: four near MG Road Metro at different distances, and one each near Cubbon Park, Indiranagar, Koramangala Forum Mall, Majestic, Jayanagar 4th Block and Whitefield ITPL. It also adds the default rental tiers (Small 1–20 slots ₹500, Medium 21–100 ₹1,500, Large 101+ ₹3,000 per month) if there are none, and dates the ten demo spaces to last month so that they have rental invoices to look at (a space's first month is free). Apart from that one date on the demo spaces, it only adds what is missing and never changes or removes existing data.
 
 ## Settings
 
@@ -113,6 +115,8 @@ npm run db:stop
 | `backend/.env` | `OVERSTAY_BLOCK_MINUTES` | Overstay is billed in started blocks of this many minutes, default 30 |
 | `backend/.env` | `OVERSTAY_RATE_PERCENT` | Overstay rate as a percentage of the space's hourly price, default 100 |
 | `backend/.env` | `UPLOADS_DIR` | Folder for entry photos, default `backend/uploads` |
+| `backend/.env` | `RENTAL_DUE_DAY` | Day of the month a rental invoice falls due, default 7 |
+| `backend/.env` | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | The platform admin login, read only by `npm run admin:create` |
 | `backend/.env` | `PAYMENT_MODE` | `mock` or `razorpay` (see Payments) |
 | `backend/.env` | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | Razorpay test keys; only needed for `razorpay` mode |
 | `frontend/.env.local` | `API_URL` | Where `/api/*` is forwarded, default `http://localhost:8080` |
@@ -151,6 +155,25 @@ The key secret stays on the server; the API checks each payment's signature befo
 
 Both modes use the same steps: booking a space holds a slot for `BOOKING_HOLD_MINUTES` as "awaiting payment", a verified payment confirms it, and a failed mock payment cancels it. A booking that is not paid within the hold time expires and its slot becomes free again.
 
+### Platform admin
+
+The admin is the person who runs ParkSpotZ. It is a separate login from a space owner and there is exactly one way to create it:
+
+1. In `backend/.env` set `ADMIN_USERNAME` (for example `admin`) and `ADMIN_PASSWORD` to a long random value of at least 12 characters. One way to make one: `node -e "console.log(require('crypto').randomBytes(18).toString('base64url'))"`.
+2. Run `npm run admin:create` in `backend/`.
+
+Run the same command again after changing `ADMIN_PASSWORD` to change the password. The script refuses short or guessable passwords and never prints the password. Nobody can sign up as an admin, and nothing in the app can turn another account into one.
+
+### Monthly rental
+
+Space owners pay ParkSpotZ a monthly fee for each listed space, set by its number of slots:
+
+- **Tiers** are kept in the database and edited by the admin under Rental. They must start at 1 slot and continue without gaps or overlaps, and the last one has no upper limit.
+- **Invoices.** Each listed space gets one invoice per calendar month (IST), for the fee of the tier its slot count is in when the invoice is made. Later tier changes do not alter existing invoices. The month a space is created in is free. An invoice falls due on the 7th (`RENTAL_DUE_DAY`); after that an unpaid invoice shows as overdue.
+- **No background job.** Missing invoices are created whenever the admin dashboard or a rental page is opened, and by `npm run rental:generate`. Running it twice does nothing the second time.
+- **Paying.** Owners pay from their Rental page with the same payment setup as bookings (`PAYMENT_MODE`), and get a receipt. Rental payments are stored separately from booking payments.
+- **Non-payment is only flagged.** Overdue invoices are highlighted for the admin and the owner. Nothing is hidden, unlisted or blocked.
+
 ## Tests and checks
 
 ```bash
@@ -181,6 +204,10 @@ npm run build
 - **Vehicle history.** Attendants (for their space) and owners (for each of their spaces) see the incoming and outgoing log by day: vehicle number, entry and exit times, who recorded them, any overstay and how it was settled, and the entry photo.
 - **Customers: after the visit.** Once the vehicle has left, the receipt and My bookings show the entry and exit times and any overstay charge.
 - **Entry photos.** Photos are shrunk in the browser (longest side 1600 px, JPEG) before upload, limited to 5 MB, accepted only if the file really is a JPEG, PNG or WebP, stored in `backend/uploads/` (ignored by git) under random names, and shown only to the space's owner and attendants.
+- **Owners: rental.** A Rental page lists the monthly invoices for the owner's spaces with a Pay button and receipts, and My spaces shows a notice when something is due or overdue.
+- **Admin: dashboard.** One login for the person running ParkSpotZ: how many spaces are onboarded (listed, not listed, added this month), how many owners, attendants and customers, slots managed in total and by rental tier, vehicles inside and slots booked right now, utilisation and bookings for today, this week and this month, and this month's rental invoiced, collected and outstanding.
+- **Admin: spaces and rental.** A sortable table of every space (owner, slots, tier, bookings and utilisation this month, rental status), the rental tier editor, and the invoice list by month and status with overdue invoices highlighted.
+- **Utilisation** is booked slot-hours divided by available slot-hours. Available = slots × daily opening hours × days in the period, for listed spaces, counted from the day a space was added. Booked = hours of paid bookings that fall inside the period.
 - All times are entered and shown in IST.
 
 ## Known limitations
@@ -197,4 +224,9 @@ npm run build
 - **Overstay is collected at the gate only** (cash or UPI, recorded by the attendant). The app does not take overstay payments online and does not check that the money was actually received.
 - **A removed attendant's username stays taken**, because the account is deactivated and not deleted.
 - **No password reset and no login rate limiting.**
+- **Rental has no auto-debit and no reminders.** Owners pay each invoice themselves; nobody is emailed or messaged.
+- **Rental non-payment is flag-only.** An overdue invoice changes nothing about how the space works.
+- **The admin cannot mark an invoice paid, cancel it or change its amount.**
+- **No hosting-cost view yet.** Comparing rental income with what the platform costs to run is left for when it is deployed.
+- **Spaces that are not listed are not invoiced**, so unlisting a space before the month starts avoids that month's fee.
 - **Not deployed.** Everything runs locally; a phone can only use it if it can reach your computer.
