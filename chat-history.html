@@ -38,7 +38,7 @@ details.tool pre { max-height:320px; overflow:auto; color:var(--text); }
 </style></head>
 <body><main>
 <h1>ParkSpotZ chat history</h1>
-<p class="sub">1 session(s) &middot; exported 11 Oct 2026, 15:26</p>
+<p class="sub">1 session(s) &middot; exported 11 Oct 2026, 16:13</p>
 <h2 class="session">GitHub connection <small class="sub">started 11 Oct 2026, 08:20</small></h2>
 <div class="msg user"><div class="who">You<time>11 Oct 2026, 08:20</time></div><p>which github is this project connected to?</p></div>
 <details class="tool"><summary>Bash: List git remotes and branch tracking</summary><pre><code>git -C /Users/vasumac/Documents/vasu_iisc/parking-app remote -v; git -C /Users/vasumac/Documents/vasu_iisc/parking-app branch -vv</code></pre><pre><code>(Bash completed with no output)</code></pre></details>
@@ -4459,7 +4459,124 @@ Refresh chat history export
 
 Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;
 EOF
-)&quot; &amp;&amp; GIT_TERMINAL_PROMPT=0 git push 2&gt;&amp;1 | tail -1</code></pre></details>
-<details class="tool"><summary>Write: /Users/vasumac/.claude/projects/-Users-vasumac-Documents-vasu-iisc-parking-app/memory/parkspotz-production-deployment.md</summary></details>
-<details class="tool"><summary>Edit: /Users/vasumac/.claude/projects/-Users-vasumac-Documents-vasu-iisc-parking-app/memory/MEMORY.md</summary></details>
+)&quot; &amp;&amp; GIT_TERMINAL_PROMPT=0 git push 2&gt;&amp;1 | tail -1</code></pre><pre><code>admin_page.html
+adminlogin.js
+api.log
+app0.ts
+backend.log
+baseline.txt
+big.bin
+car.png
+cleanup_gt.sql
+dash.json
+e1.json
+fake.jpg
+fmt.js
+fresh.sh
+frontend.log
+got.png
+gt_photos.txt
+h.txt
+hdr.txt
+l0
+now_bp.txt
+now_rest.txt
+now_users.txt
+or.json
+p.json
+page.html
+prod-api.log
+prod.log
+prodrun.py
+r.html
+r1.txt
+r2.txt
+real
+sig.ts
+t2.sh
+t3.out
+t3.sh
+t4.sh
+t5.ids
+t5.sh
+t6.ids
+t6.sh
+t7.space
+v1.json
+web.log
+flagged: {&#x27;postgres://&amp;lt;user&amp;gt;:&amp;lt;password&amp;gt;&#x27;, &#x27;postgres://user:password@&#x27;}
+   6996ba6..875a923  main -&gt; main</code></pre></details>
+<details class="tool"><summary>Write: /Users/vasumac/.claude/projects/-Users-vasumac-Documents-vasu-iisc-parking-app/memory/parkspotz-production-deployment.md</summary><pre><code>File created successfully at: /Users/vasumac/.claude/projects/-Users-vasumac-Documents-vasu-iisc-parking-app/memory/parkspotz-production-deployment.md</code></pre></details>
+<details class="tool"><summary>Edit: /Users/vasumac/.claude/projects/-Users-vasumac-Documents-vasu-iisc-parking-app/memory/MEMORY.md</summary><pre><code>The file /Users/vasumac/.claude/projects/-Users-vasumac-Documents-vasu-iisc-parking-app/memory/MEMORY.md has been updated successfully. (file state is current in your context — no need to Read it back)</code></pre></details>
+<div class="msg"><div class="who">Claude<time>11 Oct 2026, 15:26</time></div><p>ParkSpotZ is live at <strong>https://parkspotz.vercel.app</strong>, and you can open it on your phone now. The website, API and database are connected and passed the live checks I could run without making a payment.</p>
+<h3>Checked on the live site</h3>
+<ul><li><strong>Site and API connected:</strong> the home page loads and the health check passes through the site with the database connected.</li><li><strong>Google Maps:</strong> searching MG Road Metro shows the four spaces as pins on the map, with no errors.</li><li><strong>Admin login</strong> works with the new private password, and the diagnostics page shows production mode, Razorpay payments, the correct site address and working photo storage.</li><li>**The published <code>parkspotz-demo</code> password is rejected** on the live site.</li><li><strong>Guest booking</strong> creates a real Razorpay test order for the right amount (₹60).</li><li><strong>Attendant login</strong> works and is blocked from admin pages.</li><li><strong>Visitor address detection</strong> is correct, which is what the guest booking limits rely on. This was an unconfirmed setting until now.</li></ul>
+<h3>Not yet verified live</h3>
+<p>These need a completed payment in Razorpay's checkout, which is yours to do:</p>
+<ul><li>A Razorpay test payment going through to a receipt.</li><li>Recording entry with a photo from a phone camera.</li><li>Scanning a receipt QR with a phone.</li><li>Paying a rental invoice.</li></ul>
+<h3>Logins on the live site</h3>
+<div class="tablewrap"><table><tr><th>Role</th><th>Username</th><th>Password</th></tr><tr><td>Admin</td><td><code>admin</code></td><td><code>ADMIN_PASSWORD</code> in <code>backend/.env.production</code></td></tr><tr><td>Demo owner, customer, attendant</td><td><code>demo_owner</code>, <code>demo_customer</code>, <code>demo_attendant</code></td><td><code>DEMO_PASSWORD</code> in <code>backend/.env.production</code></td></tr></table></div>
+<p>Both are in that file on your Mac only. The site is in Razorpay test mode, so use a test card and no real money moves.</p>
+<h3>Please do now: restrict the Maps key</h3>
+<p>Your Maps key is visible to anyone who opens the site, so restrict it to your addresses:</p>
+<ol><li>Open <a href="https://console.cloud.google.com/apis/credentials?project=project-9ccc00ad-5852-42cc-b1f">Google Cloud Console → APIs &amp; Services → Credentials</a> and click your Maps key.</li><li>Under <strong>Application restrictions</strong>, choose <strong>Websites</strong> and add <code>https://parkspotz.vercel.app/*</code> and <code>http://localhost:3000/*</code>.</li><li>Under <strong>API restrictions</strong>, choose <strong>Restrict key</strong> and select <strong>Maps JavaScript API</strong> and <strong>Places API (New)</strong>.</li><li>Save. It can take a few minutes to apply.</li></ol>
+<h3>Things to know</h3>
+<ul><li><strong>One leftover test booking:</strong> my guest booking check ("Deploy Check") couldn't be cancelled and will show as an expired guest booking in the admin counts.</li><li><strong>First load after a quiet spell is slow</strong>, a few seconds, while the free database and the API wake up.</li><li>**Pushing to GitHub <code>main</code> now redeploys the website automatically.** The API does not; I redeploy that by hand.</li><li><strong>Your local copy</strong> is still running on your Mac with its own separate data and the old passwords.</li></ul>
+<h3>Still open</h3>
+<ul><li>The hosting-cost view on your admin dashboard.</li><li>A budget alert on Google Cloud.</li><li>The walkthrough video.</li><li>Your earlier decisions: data retention, billing for unlisted spaces, and which date overstay counts under.</li></ul>
+<p>Try a booking on your phone and tell me how it goes; then I'll pick up whichever of these you want next.</p></div>
+<div class="msg user"><div class="who">You<time>11 Oct 2026, 15:50</time></div><p>its going fine</p></div>
+<details class="tool"><summary>Bash: Check what is available locally for recording a walkthrough video</summary><pre><code>ls -d &quot;/Applications/Google Chrome.app&quot; 2&gt;&amp;1; (command -v ffmpeg || echo &quot;ffmpeg: not found&quot;); curl -s -m 5 http://localhost:3000/api/health; echo; df -h ~ | tail -1 | awk &#x27;{print &quot;free disk:&quot;,$4}&#x27;</code></pre><pre><code>/Applications/Google Chrome.app
+ffmpeg: not found
+{&quot;status&quot;:&quot;ok&quot;,&quot;db&quot;:&quot;ok&quot;}
+free disk: 15Gi</code></pre></details>
+<details class="tool"><summary>SendMessage</summary><pre><code>{&quot;success&quot;:true,&quot;message&quot;:&quot;Resuming agent a0c23b7&quot;,&quot;resumedAgentId&quot;:&quot;a0c23b785c4332572&quot;,&quot;pin&quot;:{&quot;id&quot;:&quot;a0c23b785c4332572&quot;,&quot;name&quot;:&quot;a0c23b785c4332572&quot;,&quot;ref&quot;:&quot;66caae&quot;}}</code></pre></details>
+<div class="msg"><div class="who">Claude<time>11 Oct 2026, 15:51</time></div><p>Good to hear. Since testing is going fine, I've started on the walkthrough video you asked for; it's recording in the background and I'll tell you when it's ready.</p>
+<h3>The video</h3>
+<ul><li><strong>Length and content:</strong> about 3 to 5 minutes, in five short chapters: a guest booking parking, the attendant at the gate (entry, timer, overstay and exit), a customer's bookings, the owner's screens (attendants, history, stats, rental), and your admin dashboard.</li><li><strong>Where it's recorded:</strong> on the copy of the app on your Mac, using throwaway data. The live site isn't touched.</li><li><strong>Payments in the video</strong> use the built-in test-payment screen, not Razorpay's checkout. I can't complete Razorpay's checkout myself, since it involves agreeing to their terms and entering contact details.</li><li><strong>Where it will be saved:</strong> a <code>demo/</code> folder in the project. The video files will be kept out of GitHub for now because they're large; you can decide later whether to publish them.</li></ul>
+<p>Your local copy of the app will be offline for parts of the recording and will be restored afterwards. The live site at https://parkspotz.vercel.app is unaffected.</p>
+<h3>One question</h3>
+<p>Do you want me to set up a spending alert on Google Cloud? It would email you if the month's charges pass a threshold; I'd suggest US$10. It doesn't cap or stop anything, it only warns. I haven't created it because it's a standing setting on your billing account.</p>
+<p>Also still pending from you: restricting the Maps key to the site address, if you haven't done it yet.</p></div>
+<div class="msg user"><div class="who">You<time>11 Oct 2026, 15:55</time></div><p>how do we restrict the maps key to the site address</p></div>
+<div class="msg"><div class="who">Claude<time>11 Oct 2026, 15:56</time></div><p>Restricting the key takes about two minutes in the Google Cloud console. It tells Google to accept your Maps key only when the request comes from your site, so nobody can copy the key from the page and run up usage on your bill.</p>
+<h3>Steps</h3>
+<ol><li>Open the <a href="https://console.cloud.google.com/apis/credentials?project=project-9ccc00ad-5852-42cc-b1f">Credentials page</a> for your project. Sign in with the same Google account if asked.</li><li>Under <strong>API keys</strong>, click the name of your Maps key to open it.</li><li>Under <strong>Application restrictions</strong>, select <strong>Websites</strong>.</li><li>Under <strong>Website restrictions</strong>, click <strong>Add</strong> and enter each of these, one at a time:</li></ol>
+<pre><code>https://parkspotz.vercel.app/*</code></pre>
+<pre><code>http://localhost:3000/*</code></pre>
+<ol><li>Under <strong>API restrictions</strong>, select <strong>Restrict key</strong>, open the dropdown, and tick these two:</li><li><strong>Maps JavaScript API</strong></li><li><strong>Places API (New)</strong></li><li>Click <strong>Save</strong>.</li></ol>
+<p>Changes can take up to five minutes to apply.</p>
+<h3>What each part does</h3>
+<ul><li><strong>Website restrictions</strong> limit where the key works. The first line covers the live site; the second keeps the map working when you run the app on your Mac.</li><li><strong>API restrictions</strong> limit what the key can be used for. Without this, a copied key could be used for other paid Google services in your project.</li></ul>
+<h3>Check it worked</h3>
+<p>After a few minutes, open https://parkspotz.vercel.app, search for a destination, and confirm the map and place suggestions still appear. If the map area shows an error instead, the usual cause is a typo in the website line, such as a missing <code>/*</code> at the end.</p>
+<h3>If you add your own domain later</h3>
+<p>Come back to the same screen and add it, for example <code>https://www.yourdomain.com/*</code>. Vercel's preview links for individual deployments use different addresses and won't show the map unless you also add <code>https://*.vercel.app/*</code>, which I'd leave out since it would allow any Vercel-hosted site to use your key.</p>
+<p>I can also apply these restrictions for you from the command line, since the Google Cloud tool is signed in on your Mac. Say the word and I'll do it and then confirm the map still loads.</p></div>
+<details class="tool"><summary>Bash: Confirm the video files exist, the local app is back up, and check the stray recovery-codes file&#x27;s git status</summary><pre><code>ls -la demo/ &amp;&amp; git status --short &amp;&amp; git log --oneline -2 &amp;&amp; curl -s http://localhost:3000/api/health; echo; ls -la recovery-codes.txt 2&gt;&amp;1 | awk &#x27;{print $5, $6, $7, $8, $9}&#x27;; git check-ignore -q recovery-codes.txt &amp;&amp; echo &quot;recovery file ignored&quot; || echo &quot;recovery file NOT ignored&quot;; git log --all --oneline -- recovery-codes.txt | head -2</code></pre><pre><code>total 60824
+drwxr-xr-x@  9 vasumac  staff      288 Oct 11 16:12 .
+drwxr-xr-x  16 vasumac  staff      512 Oct 11 16:12 ..
+-rw-r--r--@  1 vasumac  staff     3201 Oct 11 16:12 README.md
+-rw-r--r--@  1 vasumac  staff  3508461 Oct 11 16:08 clip-1-guest-booking.webm
+-rw-r--r--@  1 vasumac  staff  4032666 Oct 11 16:09 clip-2-attendant-gate.webm
+-rw-r--r--@  1 vasumac  staff  1016130 Oct 11 16:09 clip-3-customer.webm
+-rw-r--r--@  1 vasumac  staff  5708491 Oct 11 16:10 clip-4-owner.webm
+-rw-r--r--@  1 vasumac  staff  5188494 Oct 11 16:10 clip-5-admin.webm
+-rw-r--r--@  1 vasumac  staff  8599996 Oct 11 16:11 parkspotz-walkthrough.mp4
+?? recovery-codes.txt
+ac25fe0 Add walkthrough video script and chapter notes
+875a923 Refresh chat history export
+{&quot;status&quot;:&quot;ok&quot;,&quot;db&quot;:&quot;ok&quot;}
+107 Oct 11 15:19 recovery-codes.txt
+recovery file NOT ignored</code></pre></details>
+<details class="tool"><summary>Bash: Make git ignore the recovery-codes file, then commit and push with a refreshed chat history</summary><pre><code>printf &#x27;\n# Account recovery codes and similar must never be committed\nrecovery-codes*\n*recovery*codes*\n&#x27; &gt;&gt; .gitignore &amp;&amp; git check-ignore -q recovery-codes.txt &amp;&amp; echo &quot;now ignored&quot; &amp;&amp; python3 tools/export_chat.py &gt;/dev/null &amp;&amp; python3 -I -c &quot;
+import re;s=open(&#x27;chat-history.html&#x27;).read()
+hits=[m.group(0)[:40] for m in re.finditer(r&#x27;ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|rzp_(test|live)_[A-Za-z0-9]{8,}|AIza[0-9A-Za-z_-]{30,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}|postgres(ql)?://[^\s&lt;]+:[^\s&lt;@]+@|npg_[A-Za-z0-9]{6,}&#x27;,s)]
+print(&#x27;flagged:&#x27;,set(hits))&quot; &amp;&amp; git add .gitignore chat-history.html &amp;&amp; git commit -q -m &quot;$(cat &lt;&lt;&#x27;EOF&#x27;
+Ignore recovery-code files; refresh chat history export
+
+Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;
+EOF
+)&quot; &amp;&amp; GIT_TERMINAL_PROMPT=0 git push 2&gt;&amp;1 | tail -1; git status --short</code></pre></details>
+<details class="tool"><summary>SendUserFile</summary></details>
 </main></body></html>

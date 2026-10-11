@@ -14,3 +14,7 @@ deploy/secrets*
 demo/*.webm
 demo/*.mp4
 demo/.tmp/
+
+# Account recovery codes and similar must never be committed
+recovery-codes*
+*recovery*codes*
