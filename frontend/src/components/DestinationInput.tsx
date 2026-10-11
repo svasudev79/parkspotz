@@ -9,15 +9,17 @@ import { PlaceSearchBox } from "./PlaceSearchBox";
 export function DestinationInput({
   id,
   placeholder,
+  defaultValue,
   onPick,
 }: {
   id?: string;
   placeholder?: string;
+  defaultValue?: string; // name of an already chosen place (landmark picker only)
   onPick: (place: Place) => void;
 }) {
   return HAS_MAPS_KEY ? (
     <PlaceSearchBox id={id} onPick={onPick} />
   ) : (
-    <LandmarkPicker id={id} placeholder={placeholder} onPick={onPick} />
+    <LandmarkPicker id={id} placeholder={placeholder} defaultValue={defaultValue} onPick={onPick} />
   );
 }

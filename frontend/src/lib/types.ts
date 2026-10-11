@@ -36,3 +36,32 @@ export interface SearchResult extends Space {
   slots_available: number;
   is_open: boolean; // false when the window is outside opening hours
 }
+
+export interface Booking {
+  id: number;
+  space_id: number;
+  space_name: string;
+  space_address: string;
+  start_time: string; // ISO, UTC
+  end_time: string;
+  amount: number;
+  status: "pending" | "confirmed" | "cancelled";
+  is_expired: boolean; // pending, but not paid within the hold time
+  hold_expires_at: string;
+  created_at: string;
+  reference: string; // e.g. "PSZ-000042"
+  verify_url: string | null; // what the receipt QR encodes; set once confirmed
+}
+
+export interface PaymentInfo {
+  mode: "mock" | "razorpay";
+  order_id: string | null;
+  currency: string;
+  key_id?: string; // Razorpay public key id, razorpay mode only
+}
+
+// The one status shown to drivers for a booking.
+export function bookingState(booking: Booking): "confirmed" | "cancelled" | "expired" | "awaiting payment" {
+  if (booking.status !== "pending") return booking.status;
+  return booking.is_expired ? "expired" : "awaiting payment";
+}

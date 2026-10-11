@@ -2,6 +2,7 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import { pool } from "./db";
 import { authRouter } from "./routes/auth";
+import { bookingsRouter } from "./routes/bookings";
 import { ownerRouter } from "./routes/owner";
 import { spacesRouter } from "./routes/spaces";
 
@@ -24,6 +25,7 @@ app.get("/health", async (_req, res) => {
 app.use("/auth", authRouter);
 app.use("/owner", ownerRouter);
 app.use("/spaces", spacesRouter);
+app.use("/bookings", bookingsRouter);
 
 app.use((_req, res) => res.status(404).json({ error: "Not found" }));
 

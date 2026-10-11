@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import { api } from "@/lib/api";
-import { formatDateTime, formatDistance, formatTime, istToDate, tomorrowInIst } from "@/lib/format";
+import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { formatDateTime, formatDistance, formatTime, tomorrowInIst } from "@/lib/format";
 import { HAS_MAPS_KEY } from "@/lib/googleMaps";
 import type { Place } from "@/lib/landmarks";
-import type { SearchResult } from "@/lib/types";
+import { searchWindow, type Search, type SearchForm } from "@/lib/search";
 import { DestinationInput } from "./DestinationInput";
 import { ResultCard } from "./ResultCard";
 import { ResultsMap } from "./ResultsMap";
@@ -14,25 +14,27 @@ import { errorClass, inputClass, labelClass, primaryButtonClass } from "./ui";
 const RADII = [500, 1000, 2000];
 const DURATIONS = [1, 2, 3, 4, 6, 8, 12];
 
-// What a finished search was for; shown above the results and passed to the map.
-interface Search {
-  destination: Place;
-  radius: number;
-  start: string; // ISO
-  end: string; // ISO
-  results: SearchResult[];
-}
-
-export function SearchScreen() {
-  const [destination, setDestination] = useState<Place | null>(null);
-  const [radius, setRadius] = useState(1000);
-  const [date, setDate] = useState(tomorrowInIst);
-  const [time, setTime] = useState("10:00");
-  const [hours, setHours] = useState(2);
-  const [search, setSearch] = useState<Search | null>(null);
+// The search itself runs on the server: submitting the form puts the search in
+// the page URL, and search/page.tsx reads it back and passes in the results.
+// So Back from a space page, or a reload, shows the same search again.
+export function SearchScreen({
+  initialForm,
+  search,
+  searchFailed,
+}: {
+  initialForm: SearchForm | null;
+  search: Search | null;
+  searchFailed: boolean;
+}) {
+  const router = useRouter();
+  const [destination, setDestination] = useState<Place | null>(initialForm?.destination ?? null);
+  const [radius, setRadius] = useState(initialForm?.radius ?? 1000);
+  const [date, setDate] = useState(() => initialForm?.date ?? tomorrowInIst());
+  const [time, setTime] = useState(initialForm?.time ?? "10:00");
+  const [hours, setHours] = useState(initialForm?.hours ?? 2);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, startSearch] = useTransition();
   const resultsRef = useRef<HTMLElement>(null);
 
   // On a phone the results start below the form, so bring them into view.
@@ -40,42 +42,27 @@ export function SearchScreen() {
     if (search) resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [search]);
 
-  async function runSearch(place: Place | null, radiusM: number) {
+  function runSearch(place: Place | null, radiusM: number) {
     setError("");
     if (!place) {
       setError("Choose a destination first.");
       return;
     }
-    const start = istToDate(date, time);
-    if (Number.isNaN(start.getTime())) {
+    if (Number.isNaN(searchWindow({ date, time, hours }).start.getTime())) {
       setError("Choose a date and a start time.");
       return;
     }
-    const end = new Date(start.getTime() + hours * 60 * 60 * 1000);
     const query = new URLSearchParams({
+      name: place.name,
       lat: String(place.lat),
       lng: String(place.lng),
       radius: String(radiusM),
-      start: start.toISOString(),
-      end: end.toISOString(),
+      date,
+      time,
+      hours: String(hours),
     });
-
-    setBusy(true);
-    try {
-      const { spaces } = await api<{ spaces: SearchResult[] }>(`/spaces?${query}`);
-      setSearch({
-        destination: place,
-        radius: radiusM,
-        start: start.toISOString(),
-        end: end.toISOString(),
-        results: spaces,
-      });
-      setSelectedId(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Search failed");
-    } finally {
-      setBusy(false);
-    }
+    setSelectedId(null);
+    startSearch(() => router.replace(`/search?${query}`, { scroll: false }));
   }
 
   function submit(event: FormEvent) {
@@ -94,8 +81,15 @@ export function SearchScreen() {
       <form onSubmit={submit} className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4">
         <div className={labelClass}>
           <label htmlFor="destination">Destination</label>
-          <DestinationInput id="destination" placeholder="Where are you going?" onPick={setDestination} />
-          {!HAS_MAPS_KEY && (
+          <DestinationInput
+            id="destination"
+            placeholder="Where are you going?"
+            defaultValue={initialForm?.destination.name}
+            onPick={setDestination}
+          />
+          {HAS_MAPS_KEY ? (
+            destination && <span className="font-normal text-slate-500">Searching near {destination.name}</span>
+          ) : (
             <span className="font-normal text-slate-500">Pick from well-known Bangalore places.</span>
           )}
         </div>
@@ -154,9 +148,9 @@ export function SearchScreen() {
           </label>
         </div>
 
-        {error && (
+        {(error || searchFailed) && (
           <p role="alert" className={errorClass}>
-            {error}
+            {error || "The search failed. Please try again."}
           </p>
         )}
 

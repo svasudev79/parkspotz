@@ -9,13 +9,15 @@ import { inputClass } from "./ui";
 export function LandmarkPicker({
   id,
   placeholder,
+  defaultValue,
   onPick,
 }: {
   id?: string;
   placeholder?: string;
+  defaultValue?: string;
   onPick: (place: Place) => void;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(defaultValue ?? "");
   const [open, setOpen] = useState(false);
 
   const needle = query.trim().toLowerCase();

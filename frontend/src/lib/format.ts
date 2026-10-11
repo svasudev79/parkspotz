@@ -45,3 +45,13 @@ export function formatRupees(amount: number): string {
 export function capitalize(word: string): string {
   return word.charAt(0).toUpperCase() + word.slice(1);
 }
+
+// "Tue, 13 Oct, 10:00 am to 12:00 pm IST"
+export function formatWindow(start: string | Date, end: string | Date): string {
+  return `${formatDateTime(start)} to ${formatTime(end)} IST`;
+}
+
+export function formatHours(hours: number): string {
+  const rounded = Math.round(hours * 100) / 100;
+  return `${rounded} ${rounded === 1 ? "hour" : "hours"}`;
+}
