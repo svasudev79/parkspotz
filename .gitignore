@@ -9,3 +9,8 @@
 *.env
 !.env.example
 deploy/secrets*
+
+# Walkthrough videos are large; only demo/README.md is tracked.
+demo/*.webm
+demo/*.mp4
+demo/.tmp/
