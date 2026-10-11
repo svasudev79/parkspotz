@@ -52,7 +52,7 @@ export default async function VerifyPage(props: PageProps<"/verify/[qrToken]">) 
           <p className="mt-1 text-base">
             {!booking && "This code is not a paid booking for one of your spaces."}
             {booking && result.timing === "current" && `Booked until ${formatTime(booking.end_time)} IST.`}
-            {booking && result.timing === "upcoming" && `It starts ${formatWindow(booking.start_time, booking.end_time)}.`}
+            {booking && result.timing === "upcoming" && `It is for ${formatWindow(booking.start_time, booking.end_time)}.`}
             {booking && result.timing === "over" && `It was for ${formatWindow(booking.start_time, booking.end_time)}.`}
           </p>
         </div>

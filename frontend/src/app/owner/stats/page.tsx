@@ -78,31 +78,31 @@ export default async function OwnerStatsPage(props: PageProps<"/owner/stats">) {
             (IST).
           </p>
           <div className={`${cardClass} overflow-x-auto p-0`}>
-            <table className="w-full text-left text-base">
+            <table className="w-full text-left text-sm sm:text-base">
               <thead className="border-b border-slate-200 text-sm text-slate-500">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Space</th>
-                  <th className="px-3 py-3 text-right font-medium">Bookings</th>
-                  <th className="px-3 py-3 text-right font-medium">Hours</th>
-                  <th className="px-4 py-3 text-right font-medium">Revenue</th>
+                  <th className="py-3 pr-2 pl-3 font-medium sm:px-4">Space</th>
+                  <th className="px-2 py-3 sm:px-3 text-right font-medium">Bookings</th>
+                  <th className="px-2 py-3 sm:px-3 text-right font-medium">Hours</th>
+                  <th className="px-2 py-3 sm:px-4 text-right font-medium">Revenue</th>
                 </tr>
               </thead>
               <tbody>
                 {stats.spaces.map((row) => (
                   <tr key={row.space_id} className="border-b border-slate-100">
-                    <td className="px-4 py-3 break-words">{row.space_name}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{row.bookings}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{row.hours}</td>
-                    <td className="px-4 py-3 text-right tabular-nums">{formatRupees(row.revenue)}</td>
+                    <td className="px-2 py-3 sm:px-4 break-words">{row.space_name}</td>
+                    <td className="px-2 py-3 sm:px-3 text-right tabular-nums">{row.bookings}</td>
+                    <td className="px-2 py-3 sm:px-3 text-right tabular-nums">{row.hours}</td>
+                    <td className="px-2 py-3 sm:px-4 text-right tabular-nums">{formatRupees(row.revenue)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="font-semibold">
-                  <td className="px-4 py-3">Total</td>
-                  <td className="px-3 py-3 text-right tabular-nums">{stats.total.bookings}</td>
-                  <td className="px-3 py-3 text-right tabular-nums">{stats.total.hours}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{formatRupees(stats.total.revenue)}</td>
+                  <td className="px-2 py-3 sm:px-4">Total</td>
+                  <td className="px-2 py-3 sm:px-3 text-right tabular-nums">{stats.total.bookings}</td>
+                  <td className="px-2 py-3 sm:px-3 text-right tabular-nums">{stats.total.hours}</td>
+                  <td className="px-2 py-3 sm:px-4 text-right tabular-nums">{formatRupees(stats.total.revenue)}</td>
                 </tr>
               </tfoot>
             </table>

@@ -21,8 +21,8 @@ export async function Header() {
 
   return (
     <header className="border-b border-slate-200 bg-white print:hidden">
-      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3">
-        <Link href={user ? homeFor(user.role) : "/login"} className="text-lg font-bold text-emerald-700">
+      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2">
+        <Link href={user ? homeFor(user.role) : "/login"} className="py-2 text-lg font-bold text-emerald-700">
           ParkSpotZ
         </Link>
 

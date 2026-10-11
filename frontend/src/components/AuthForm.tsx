@@ -119,7 +119,7 @@ export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: stri
         {isSignup ? "Already have an account? " : "New to ParkSpotZ? "}
         <Link
           href={`${isSignup ? "/login" : "/signup"}${next ? `?next=${encodeURIComponent(next)}` : ""}`}
-          className="inline-block py-2 font-medium text-emerald-700 underline"
+          className="inline-block py-3 font-medium text-emerald-700 underline"
         >
           {isSignup ? "Log in" : "Sign up"}
         </Link>

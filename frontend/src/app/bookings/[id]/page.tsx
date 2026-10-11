@@ -24,7 +24,7 @@ export default async function BookingPage(props: PageProps<"/bookings/[id]">) {
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6">
-      <Link href="/bookings" className="self-start py-2 text-sm font-medium text-emerald-700 underline print:hidden">
+      <Link href="/bookings" className="self-start py-3 text-sm font-medium text-emerald-700 underline print:hidden">
         ← My bookings
       </Link>
 

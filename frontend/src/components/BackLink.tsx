@@ -10,7 +10,7 @@ export function BackLink({ fallback, children }: { fallback: string; children: R
     <button
       type="button"
       onClick={() => (window.history.length > 1 ? router.back() : router.push(fallback))}
-      className="inline-block self-start py-2 text-sm font-medium text-emerald-700 underline print:hidden"
+      className="inline-block self-start py-3 text-sm font-medium text-emerald-700 underline print:hidden"
     >
       {children}
     </button>

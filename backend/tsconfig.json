@@ -43,5 +43,7 @@
 
     "esModuleInterop": true,
     "resolveJsonModule": true,
-  }
+  },
+  // The build covers src/ only; tests in test/ run through tsx.
+  "include": ["src"]
 }
