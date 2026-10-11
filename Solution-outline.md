@@ -154,7 +154,52 @@ Simplifications that make one day realistic:
 
 If the day runs short, cut from the bottom: deploy (demo locally), then block 7, then block 5 (mark bookings confirmed without payment). Blocks 0–3 are the part that must not slip, since they cover the spec's success metrics.
 
-## 8. Proposed out of scope for Phase 1
+## 8. Test plan
+
+Run after block 8 of the build plan, and run the walkthrough once more at the checkpoint after block 3 (steps 1-5 only).
+
+### 8.1 End-to-end walkthrough
+
+Use two browser windows, one normal and one private, to be logged in as an owner and a driver at the same time. Start from seed data: a few Bangalore parking spaces near one known destination (e.g. MG Road metro).
+
+| # | As | Do | Expect |
+|---|----|----|--------|
+| 1 | Owner | Sign up, log in | Lands on owner home |
+| 2 | Owner | Add a space near the destination: 2 slots, ₹40/hour, 08:00–22:00 | Appears in "my spaces" |
+| 3 | Driver | Sign up, log in | Lands on search |
+| 4 | Driver | Search the destination, 1 km radius, tomorrow 10:00 for 2 hours | New space shows on map and list with "2 slots available" |
+| 5 | Driver | Shrink the radius to 500 m, then search a far-away destination | Space drops out when out of range |
+| 6 | Driver | Book it and pay with a Razorpay test card or test UPI ID | Booking becomes `confirmed`; receipt opens showing ₹80 and a QR code |
+| 7 | Driver | Repeat the same search | Now "1 slot available" |
+| 8 | Driver | Save the receipt as PDF; open "My bookings" | Booking is listed and the receipt reopens |
+| 9 | Owner | Open the QR's verify link | Booking shows as valid |
+| 10 | Owner | Open stats | 1 booking, 2 hours, ₹80 for the day |
+
+Steps 1–5 cover every success metric in the spec. Steps 6–10 cover booking and payment.
+
+### 8.2 Targeted checks
+
+| Rule | Test | Expect |
+|------|------|--------|
+| Last slot | Set a space to 1 slot; two drivers book the same window | Second booking is refused |
+| Overlap | With the slot booked 10:00–12:00, search 11:00–13:00, then 12:00–14:00 | 0 available, then 1 available |
+| Abandoned payment | Start a booking and close the Razorpay window without paying | Slot is held, then free again after 10 minutes |
+| Failed payment | Use Razorpay's test failure option | Booking does not become `confirmed` |
+| Opening hours | Book outside 08:00–22:00 | Rejected |
+| Access control | Driver opens an owner page; owner requests another owner's stats; open a made-up QR token | Refused, refused, shown as invalid |
+| Mobile | Repeat steps 3–8 on a phone or at phone width | Usable without horizontal scrolling |
+
+### 8.3 Practical notes
+
+- **Payments cost nothing.** In Razorpay test mode no real money moves; Razorpay's documentation lists the test card numbers and UPI IDs.
+- **QR scanning needs a reachable URL.** The QR encodes a link and a phone cannot open `localhost`. Test scanning after deploying, or paste the verify link into the browser while running locally.
+- **Time-dependent cases** such as the 10-minute hold are quicker to test with the hold temporarily set to 1 minute.
+
+### 8.4 Automation
+
+Given the one-day budget, automate only the two rules most likely to break silently later: the last-slot check and the overlap check, as API tests. The walkthrough stays manual (or is driven through the browser by Claude) and can become a Playwright test in Phase 2.
+
+## 9. Proposed out of scope for Phase 1
 
 The spec's "Out of Scope" section is empty; suggested entries:
 
@@ -167,7 +212,7 @@ The spec's "Out of Scope" section is empty; suggested entries:
 - Ratings, reviews, notifications (SMS / email / push)
 - Password reset
 
-## 9. Open questions
+## 10. Open questions
 
 1. **Owner use case is cut off.** Section 3 of the spec ends at "…run day to day operations like being able to charge". What should owners be able to charge or do?
 2. **Payments in Phase 1:** is test mode enough, or must real money be collected? Real collection needs a registered Razorpay account and a plan for paying owners.
