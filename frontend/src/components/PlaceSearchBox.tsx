@@ -26,6 +26,7 @@ export function PlaceSearchBox({ id, onPick }: { id?: string; onPick: (place: Pl
         element = new google.maps.places.PlaceAutocompleteElement({ includedRegionCodes: ["in"] });
         element.style.width = "100%";
         element.style.colorScheme = "light"; // the app has a light theme only
+        element.setAttribute("placeholder", "Search for a place");
         element.addEventListener("gmp-select", async (event) => {
           const place = event.placePrediction.toPlace();
           await place.fetchFields({ fields: ["displayName", "formattedAddress", "location"] });
@@ -50,5 +51,11 @@ export function PlaceSearchBox({ id, onPick }: { id?: string; onPick: (place: Pl
   }, []);
 
   if (failed) return <LandmarkPicker id={id} onPick={onPick} />;
-  return <div id={id} ref={hostRef} className="min-h-12" />;
+  return (
+    <div
+      id={id}
+      ref={hostRef}
+      className="min-h-12 rounded-lg border border-slate-300 bg-white focus-within:border-emerald-600 focus-within:ring-2 focus-within:ring-emerald-100"
+    />
+  );
 }
