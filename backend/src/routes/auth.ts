@@ -1,6 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { pool } from "../db";
+import { claimGuestBookings } from "../guest";
 import { requireAuth } from "../middleware/auth";
 import { SESSION_COOKIE, sessionCookieOptions, signSession, type SessionUser } from "../session";
 import { isSignupRole, normalizeUsername, validateSignup } from "../validation";
@@ -27,6 +28,8 @@ authRouter.post("/signup", async (req, res) => {
       [username, passwordHash, role]
     );
     const user: SessionUser = rows[0];
+    // Guest bookings made in this browser move to the new customer account.
+    if (user.role === "customer") await claimGuestBookings(req, res, user.id);
     res.cookie(SESSION_COOKIE, signSession(user), sessionCookieOptions);
     res.status(201).json({ user });
   } catch (err) {
@@ -57,6 +60,8 @@ authRouter.post("/login", async (req, res) => {
   }
 
   const user: SessionUser = { id: row.id, username: row.username, role: row.role };
+  // Guest bookings made in this browser move to the customer's account.
+  if (user.role === "customer") await claimGuestBookings(req, res, user.id);
   res.cookie(SESSION_COOKIE, signSession(user), sessionCookieOptions);
   res.json({ user });
 });

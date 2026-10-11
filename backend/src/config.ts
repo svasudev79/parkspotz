@@ -37,6 +37,12 @@ export const config = {
   overstayGraceMinutes: Number(process.env.OVERSTAY_GRACE_MINUTES ?? 10),
   overstayBlockMinutes: Number(process.env.OVERSTAY_BLOCK_MINUTES ?? 30),
   overstayRatePercent: Number(process.env.OVERSTAY_RATE_PERCENT ?? 100),
+  // Guests (no account) may hold at most this many unpaid bookings at once,
+  // counted per browser and per IP address.
+  guestMaxPending: Number(process.env.GUEST_MAX_PENDING ?? 2),
+  // How many reverse proxies sit in front of the API. 1 = the Next.js /api
+  // rewrite. Only that many X-Forwarded-For entries (from the right) are trusted.
+  trustProxyHops: Number(process.env.TRUST_PROXY_HOPS ?? 1),
   // Day of the month on which a rental invoice falls due.
   rentalDueDay: Math.min(Math.max(Number(process.env.RENTAL_DUE_DAY ?? 7), 1), 28),
   // Folder for entry photos. Never served directly; see routes/visits.ts.

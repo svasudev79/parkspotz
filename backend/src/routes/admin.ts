@@ -81,7 +81,9 @@ adminRouter.get("/dashboard", async (_req, res) => {
            FROM (${utilisationSql(period)}) u`
         ),
         pool.query(
-          `SELECT count(*)::int AS count, COALESCE(sum(amount), 0)::float AS revenue
+          `SELECT count(*)::int AS count, COALESCE(sum(amount), 0)::float AS revenue,
+                  count(*) FILTER (WHERE guest_name IS NOT NULL)::int AS guest,
+                  count(*) FILTER (WHERE guest_name IS NULL)::int AS registered
            FROM bookings
            WHERE status = 'confirmed'
              AND start_time >= ${from} AT TIME ZONE 'Asia/Kolkata'

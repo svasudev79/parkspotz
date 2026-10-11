@@ -65,7 +65,7 @@ test("utilisation: 10 slots x 12 open hours = 120 slot-hours today; one 3-hour b
   const dashboard = await call(admin, "GET", "/admin/dashboard");
   assert.equal(dashboard.status, 200);
   assert.deepEqual(dashboard.body.utilisation.day, { booked_hours: 3, available_hours: 120, percent: 2.5 });
-  assert.deepEqual(dashboard.body.bookings.day, { count: 1, revenue: 120 });
+  assert.deepEqual(dashboard.body.bookings.day, { count: 1, revenue: 120, guest: 0, registered: 1 });
   assert.equal(dashboard.body.slots.total, 10);
   assert.deepEqual(dashboard.body.spaces, { total: 1, active: 1, inactive: 0, added_this_month: 0 });
   assert.deepEqual(dashboard.body.users, { owners: 2, attendants: 0, customers: 1 });

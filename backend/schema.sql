@@ -155,3 +155,20 @@ CREATE TABLE IF NOT EXISTS rental_payments (
 );
 
 CREATE INDEX IF NOT EXISTS idx_rental_payments_invoice ON rental_payments (invoice_id);
+
+-- ---------------------------------------------------------------------------
+-- Guest bookings: booking and paying without an account.
+-- A guest booking has no user; it carries the guest's name and phone and is
+-- reached with its own unguessable access_token.
+-- ---------------------------------------------------------------------------
+ALTER TABLE bookings ALTER COLUMN user_id DROP NOT NULL;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS guest_name TEXT;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS guest_phone TEXT;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS access_token TEXT UNIQUE;
+-- Address the guest booked from; used only to limit unpaid holds per address.
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS guest_ip TEXT;
+ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_owner_check;
+ALTER TABLE bookings ADD CONSTRAINT bookings_owner_check CHECK (
+  user_id IS NOT NULL
+  OR (guest_name IS NOT NULL AND guest_phone IS NOT NULL AND access_token IS NOT NULL)
+);

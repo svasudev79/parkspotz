@@ -44,20 +44,24 @@ export const VISIT_SELECT = `
          (v.entry_photo IS NOT NULL) AS has_photo,
          v.overstay_minutes, v.overstay_amount, v.overstay_settlement, v.overstay_waive_reason,
          eb.username AS entry_by, xb.username AS exit_by,
-         b.start_time, b.end_time, cu.username AS customer, s.name AS space_name,
+         b.start_time, b.end_time, s.name AS space_name,
+         COALESCE(b.guest_name, cu.username) AS customer, (b.guest_name IS NOT NULL) AS is_guest,
+         b.guest_phone,
          s.price_per_hour AS hourly_rate, ${LATE_MINUTES_SQL} AS late_minutes_now
   FROM visits v
   JOIN bookings b ON b.id = v.booking_id
   JOIN parking_spaces s ON s.id = v.space_id
-  JOIN users cu ON cu.id = b.user_id
+  LEFT JOIN users cu ON cu.id = b.user_id
   JOIN users eb ON eb.id = v.entry_by
   LEFT JOIN users xb ON xb.id = v.exit_by`;
 
 // JSON for a visit. While the vehicle is inside, overstay_minutes and
 // overstay_amount are the server's figures as of now; after exit they are
 // what was recorded.
-export function toVisit(row: Record<string, unknown>) {
-  const { booking_id, hourly_rate, late_minutes_now, ...visit } = row;
+// `withPhone` adds a guest's phone number: only for the single-visit views
+// (the check screen and one visit), never for lists.
+export function toVisit(row: Record<string, unknown>, withPhone = false) {
+  const { booking_id, hourly_rate, late_minutes_now, guest_phone, ...visit } = row;
   const rate = Number(hourly_rate);
   const inside = row.exit_at === null;
   const lateMinutes = inside ? Number(late_minutes_now) : Number(row.overstay_minutes);
@@ -67,6 +71,7 @@ export function toVisit(row: Record<string, unknown>) {
     overstay_minutes: lateMinutes,
     overstay_amount: inside ? overstayAmount(lateMinutes, rate) : Number(row.overstay_amount),
     overstay_rule: overstayRule(rate),
+    ...(withPhone ? { guest_phone: guest_phone ?? null } : {}),
   };
 }
 
@@ -89,7 +94,9 @@ export async function findVisit(visitId: number | null, user: SessionUser) {
 export async function gateView(qrToken: string, user: SessionUser) {
   const { rows } = await pool.query(
     `SELECT b.id, b.start_time, b.end_time, b.amount,
-            s.name AS space_name, s.address AS space_address, cu.username AS customer,
+            s.name AS space_name, s.address AS space_address,
+            COALESCE(b.guest_name, cu.username) AS customer, (b.guest_name IS NOT NULL) AS is_guest,
+            b.guest_phone,
             CASE WHEN now() < b.start_time THEN 'upcoming'
                  WHEN now() < b.end_time THEN 'current'
                  ELSE 'over' END AS timing,
@@ -98,7 +105,7 @@ export async function gateView(qrToken: string, user: SessionUser) {
             v.id AS visit_id
      FROM bookings b
      JOIN parking_spaces s ON s.id = b.space_id
-     JOIN users cu ON cu.id = b.user_id
+     LEFT JOIN users cu ON cu.id = b.user_id
      LEFT JOIN visits v ON v.booking_id = b.id
      WHERE b.qr_token = $1 AND b.status = 'confirmed' AND ${staffOfSpaceSql("$2")}`,
     [qrToken, user.id, config.entryGraceMinutes]
@@ -117,11 +124,15 @@ export async function gateView(qrToken: string, user: SessionUser) {
       space_name: row.space_name,
       space_address: row.space_address,
       customer: row.customer,
+      // A guest has no account; staff of the space get the phone number the
+      // guest gave, to identify or reach them. Only here, on the check screen.
+      is_guest: row.is_guest,
+      guest_phone: row.guest_phone,
       start_time: row.start_time,
       end_time: row.end_time,
       ...(user.role === "owner" ? { amount: Number(row.amount) } : {}),
     },
-    visit: visit ? toVisit(visit) : null,
+    visit: visit ? toVisit(visit, true) : null,
     now: new Date().toISOString(), // server time, for the time-left display
   };
 }

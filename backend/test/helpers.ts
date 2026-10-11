@@ -54,16 +54,32 @@ export async function startApp(): Promise<{ stop: () => Promise<void> }> {
   };
 }
 
-export async function call(session: Session | null, method: string, path: string, body?: unknown) {
+// `headers` adds request headers, e.g. X-Forwarded-For to act as another address.
+export async function call(
+  session: Session | null,
+  method: string,
+  path: string,
+  body?: unknown,
+  headers: Record<string, string> = {}
+) {
   const res = await fetch(baseUrl + path, {
     method,
     headers: {
       ...(body === undefined ? {} : { "Content-Type": "application/json" }),
       ...(session ? { cookie: session.cookie } : {}),
+      ...headers,
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
-  return { status: res.status, body: await res.json(), setCookie: res.headers.get("set-cookie") };
+  const cookies = res.headers.getSetCookie().map((cookie) => cookie.split(";")[0]!);
+  return {
+    status: res.status,
+    body: await res.json(),
+    // The session cookie set by this response, if any.
+    setCookie: cookies.find((cookie) => cookie.startsWith("parkspotz_session=")) ?? null,
+    // Every cookie set by this response, as "name=value".
+    cookies,
+  };
 }
 
 // A request with a raw (non-JSON) body or response, e.g. a photo.
@@ -81,13 +97,13 @@ export function rawCall(session: Session | null, method: string, path: string, b
 export async function signup(username: string, role: "customer" | "owner"): Promise<Session> {
   const res = await call(null, "POST", "/auth/signup", { username, password: "test-password", role });
   assert.equal(res.status, 201);
-  return { cookie: res.setCookie!.split(";")[0]! };
+  return { cookie: res.setCookie! };
 }
 
 export async function login(username: string, password = "test-password"): Promise<Session> {
   const res = await call(null, "POST", "/auth/login", { username, password });
   assert.equal(res.status, 200);
-  return { cookie: res.setCookie!.split(";")[0]! };
+  return { cookie: res.setCookie! };
 }
 
 export async function createSpace(owner: Session, totalSlots: number, name?: string): Promise<number> {

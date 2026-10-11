@@ -45,7 +45,7 @@ visitsRouter.get("/", async (req, res) => {
      ORDER BY v.entry_at DESC, v.id DESC`,
     [req.user!.id, spaceId, day]
   );
-  res.json({ visits: rows.map(toVisit), now: new Date().toISOString() });
+  res.json({ visits: rows.map((row) => toVisit(row)), now: new Date().toISOString() });
 });
 
 // POST /visits { qr_token, vehicle_number? } — record a vehicle's entry.
@@ -92,7 +92,7 @@ visitsRouter.post("/", async (req, res) => {
 visitsRouter.get("/:id", async (req, res) => {
   const visit = await findVisit(parseId(req.params.id), req.user!);
   if (!visit) return res.status(404).json({ error: "Visit not found" });
-  res.json({ visit: toVisit(visit), now: new Date().toISOString() });
+  res.json({ visit: toVisit(visit, true), now: new Date().toISOString() });
 });
 
 // POST /visits/:id/exit { settlement?, waive_reason?, amount_shown? }

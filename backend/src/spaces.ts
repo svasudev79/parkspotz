@@ -92,6 +92,14 @@ export function toSpace(row: Record<string, unknown>) {
   };
 }
 
+// A space as anyone may see it (search results, the space page): no owner id
+// and no creation date. The owner's own id is added back only for that owner,
+// who needs it to manage the space.
+export function toPublicSpace(row: Record<string, unknown>, viewerId?: number) {
+  const { owner_id, created_at: _createdAt, ...space } = toSpace(row) as Record<string, unknown>;
+  return viewerId !== undefined && viewerId === owner_id ? { ...space, owner_id } : space;
+}
+
 // Positive integer id from a URL, or null.
 export function parseId(value: unknown): number | null {
   return typeof value === "string" && /^[1-9]\d{0,8}$/.test(value) ? Number(value) : null;

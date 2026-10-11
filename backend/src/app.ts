@@ -1,10 +1,12 @@
 import express from "express";
 import cookieParser from "cookie-parser";
+import { config } from "./config";
 import { pool } from "./db";
 import { adminRouter } from "./routes/admin";
 import { authRouter } from "./routes/auth";
 import { bookingsRouter } from "./routes/bookings";
 import { gateRouter } from "./routes/gate";
+import { guestRouter } from "./routes/guest";
 import { ownerRouter } from "./routes/owner";
 import { rentalRouter } from "./routes/rental";
 import { spacesRouter } from "./routes/spaces";
@@ -15,6 +17,10 @@ import { visitsRouter } from "./routes/visits";
 // /api/* here, so there is no CORS setup and cookies stay first-party.
 export const app = express();
 app.disable("x-powered-by");
+// The Next.js /api rewrite sits in front of this API and adds the caller's
+// address to X-Forwarded-For. Trust exactly that many hops, so req.ip is the
+// address our own proxy saw and not whatever the caller typed into the header.
+app.set("trust proxy", config.trustProxyHops);
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
 
@@ -33,6 +39,7 @@ app.use("/owner", ownerRouter);
 app.use("/admin", adminRouter);
 app.use("/spaces", spacesRouter);
 app.use("/bookings", bookingsRouter);
+app.use("/guest", guestRouter);
 app.use("/verify", verifyRouter);
 app.use("/gate", gateRouter);
 app.use("/visits", visitsRouter);

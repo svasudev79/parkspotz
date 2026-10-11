@@ -2,8 +2,8 @@ import { Router } from "express";
 import { overlappingBookingsSql, withinOpeningHoursSql } from "../availability";
 import { config } from "../config";
 import { pool } from "../db";
-import { requireRole } from "../middleware/auth";
-import { parseId, toSpace, validateSpace } from "../spaces";
+import { publicOr, requireRole } from "../middleware/auth";
+import { parseId, toPublicSpace, toSpace, validateSpace } from "../spaces";
 
 export const spacesRouter = Router();
 
@@ -22,10 +22,13 @@ function parseDate(value: unknown): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+// Search and the space page are public: guests can use them without logging
+// in. Attendants and the admin have no use for them and are refused.
+
 // GET /spaces?lat&lng&radius&start&end — active spaces within `radius` metres,
 // nearest first, with slots available for the window start..end (ISO times).
 // Spaces closed for that window are still listed, with is_open = false.
-spacesRouter.get("/", requireRole("customer", "owner"), async (req, res) => {
+spacesRouter.get("/", publicOr("customer", "owner"), async (req, res) => {
   const lat = Number(req.query.lat);
   const lng = Number(req.query.lng);
   const radius = Number(req.query.radius);
@@ -59,19 +62,19 @@ spacesRouter.get("/", requireRole("customer", "owner"), async (req, res) => {
   );
 
   res.json({
-    spaces: rows.map((row) => ({ ...toSpace(row), distance_m: Math.round(row.distance_m) })),
+    spaces: rows.map((row) => ({ ...toPublicSpace(row, req.user?.id), distance_m: Math.round(row.distance_m) })),
   });
 });
 
 // GET /spaces/:id — one space. Inactive spaces are visible to their owner only.
-spacesRouter.get("/:id", requireRole("customer", "owner"), async (req, res) => {
+spacesRouter.get("/:id", publicOr("customer", "owner"), async (req, res) => {
   const id = parseId(req.params.id);
   const { rows } = id ? await pool.query("SELECT * FROM parking_spaces WHERE id = $1", [id]) : { rows: [] };
   const row = rows[0];
-  if (!row || (!row.is_active && row.owner_id !== req.user!.id)) {
+  if (!row || (!row.is_active && row.owner_id !== req.user?.id)) {
     return res.status(404).json({ error: "Parking space not found" });
   }
-  res.json({ space: toSpace(row) });
+  res.json({ space: toPublicSpace(row, req.user?.id) });
 });
 
 // POST /spaces — an owner lists a new space.

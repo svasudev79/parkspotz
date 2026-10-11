@@ -23,9 +23,10 @@ gateRouter.get("/home", requireRole("attendant"), async (req, res) => {
   const [inside, expected] = await Promise.all([
     pool.query(`${VISIT_SELECT} WHERE v.space_id = $1 AND v.exit_at IS NULL ORDER BY b.end_time, v.id`, [space.id]),
     pool.query(
-      `SELECT b.id, b.qr_token, b.start_time, b.end_time, cu.username AS customer
+      `SELECT b.id, b.qr_token, b.start_time, b.end_time,
+              COALESCE(b.guest_name, cu.username) AS customer, (b.guest_name IS NOT NULL) AS is_guest
        FROM bookings b
-       JOIN users cu ON cu.id = b.user_id
+       LEFT JOIN users cu ON cu.id = b.user_id
        WHERE b.space_id = $1 AND b.status = 'confirmed'
          AND b.start_time >= ${dayStartSql("NULL")} AT TIME ZONE 'Asia/Kolkata'
          AND b.start_time < (${dayStartSql("NULL")} + interval '1 day') AT TIME ZONE 'Asia/Kolkata'
@@ -44,7 +45,7 @@ gateRouter.get("/home", requireRole("attendant"), async (req, res) => {
       open_time: String(space.open_time).slice(0, 5),
       close_time: String(space.close_time).slice(0, 5),
     },
-    inside: inside.rows.map(toVisit),
+    inside: inside.rows.map((row) => toVisit(row)),
     expected: expected.rows.map(({ id, ...booking }) => ({ ...booking, reference: bookingReference(id) })),
     now: new Date().toISOString(),
   });
