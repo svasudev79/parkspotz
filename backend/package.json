@@ -7,7 +7,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "db:setup": "tsx src/scripts/db-setup.ts"
+    "db:setup": "tsx src/scripts/db-setup.ts",
+    "db:start": "/Applications/Postgres.app/Contents/Versions/latest/bin/pg_ctl -D ../.localdb/data -l ../.localdb/postgres.log -w start",
+    "db:stop": "/Applications/Postgres.app/Contents/Versions/latest/bin/pg_ctl -D ../.localdb/data stop"
   },
   "keywords": [],
   "author": "",

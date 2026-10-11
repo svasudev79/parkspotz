@@ -5,14 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { homeFor, type Role, type User } from "@/lib/types";
+import { inputClass } from "./ui";
 
 const ROLES: { value: Role; title: string; hint: string }[] = [
   { value: "driver", title: "Driver", hint: "Find and book parking" },
   { value: "owner", title: "Space owner", hint: "List and manage a parking space" },
 ];
-
-const inputClass =
-  "h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100";
 
 export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();

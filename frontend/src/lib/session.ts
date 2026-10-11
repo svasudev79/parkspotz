@@ -22,7 +22,27 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
   }
 });
 
-// For pages that need a login: sends visitors to /login, and users with the
+// For pages open to any logged-in user.
+export async function requireUser(): Promise<User> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  return user;
+}
+
+// GET from the API as the current visitor. Returns null on any error (e.g. 404).
+export async function apiGet<T>(path: string): Promise<T | null> {
+  try {
+    const res = await fetch(`${API_URL}${path}`, {
+      headers: { cookie: (await cookies()).toString() },
+      cache: "no-store",
+    });
+    return res.ok ? ((await res.json()) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+// For pages that need one role: sends visitors to /login, and users with the
 // wrong role to their own home page.
 export async function requireRole(role: Role): Promise<User> {
   const user = await getCurrentUser();

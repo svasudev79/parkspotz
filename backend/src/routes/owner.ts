@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { pool } from "../db";
 import { requireRole } from "../middleware/auth";
+import { toSpace } from "../spaces";
 
 export const ownerRouter = Router();
 
@@ -12,5 +13,5 @@ ownerRouter.get("/spaces", async (req, res) => {
     "SELECT * FROM parking_spaces WHERE owner_id = $1 ORDER BY created_at DESC",
     [req.user!.id]
   );
-  res.json({ spaces: rows });
+  res.json({ spaces: rows.map(toSpace) });
 });
