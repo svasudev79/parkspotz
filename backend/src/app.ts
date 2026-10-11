@@ -5,6 +5,7 @@ import { authRouter } from "./routes/auth";
 import { bookingsRouter } from "./routes/bookings";
 import { ownerRouter } from "./routes/owner";
 import { spacesRouter } from "./routes/spaces";
+import { verifyRouter } from "./routes/verify";
 
 // The browser never calls this API directly: the Next.js frontend forwards
 // /api/* here, so there is no CORS setup and cookies stay first-party.
@@ -26,6 +27,7 @@ app.use("/auth", authRouter);
 app.use("/owner", ownerRouter);
 app.use("/spaces", spacesRouter);
 app.use("/bookings", bookingsRouter);
+app.use("/verify", verifyRouter);
 
 app.use((_req, res) => res.status(404).json({ error: "Not found" }));
 

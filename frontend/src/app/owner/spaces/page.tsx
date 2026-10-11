@@ -3,14 +3,19 @@ import Link from "next/link";
 import { SpaceFacts } from "@/components/SpaceFacts";
 import { cardClass, primaryButtonClass, secondaryButtonClass } from "@/components/ui";
 import { apiGet, requireRole } from "@/lib/session";
-import type { Space } from "@/lib/types";
+import { formatRupees, formatTime } from "@/lib/format";
+import type { OwnerBooking, Space } from "@/lib/types";
 
 export const metadata: Metadata = { title: "My spaces · ParkSpotZ" };
 
 export default async function OwnerSpacesPage() {
   await requireRole("owner");
-  const data = await apiGet<{ spaces: Space[] }>("/owner/spaces");
+  const [data, today] = await Promise.all([
+    apiGet<{ spaces: Space[] }>("/owner/spaces"),
+    apiGet<{ bookings: OwnerBooking[] }>("/owner/bookings"),
+  ]);
   const spaces = data?.spaces ?? [];
+  const todaysBookings = today?.bookings ?? [];
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-6">
@@ -53,6 +58,29 @@ export default async function OwnerSpacesPage() {
           </li>
         ))}
       </ul>
+
+      {spaces.length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-xl font-bold">Today&apos;s bookings</h2>
+          {todaysBookings.length === 0 ? (
+            <p className="mt-2 text-slate-600">No paid bookings start today.</p>
+          ) : (
+            <ul className="mt-3 flex flex-col gap-2">
+              {todaysBookings.map((booking) => (
+                <li key={booking.id} className={`${cardClass} flex flex-col gap-1`}>
+                  <p className="font-semibold">
+                    {formatTime(booking.start_time)} to {formatTime(booking.end_time)}
+                    <span className="font-normal text-slate-600"> · {booking.space_name}</span>
+                  </p>
+                  <p className="text-sm text-slate-600">
+                    {booking.driver} · {formatRupees(booking.amount)} · {booking.reference}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
     </main>
   );
 }

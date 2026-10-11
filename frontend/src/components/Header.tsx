@@ -8,7 +8,10 @@ const NAV: Record<Role, { href: string; label: string }[]> = {
     { href: "/search", label: "Find parking" },
     { href: "/bookings", label: "My bookings" },
   ],
-  owner: [{ href: "/owner/spaces", label: "My spaces" }],
+  owner: [
+    { href: "/owner/spaces", label: "My spaces" },
+    { href: "/owner/stats", label: "Stats" },
+  ],
 };
 
 const navLinkClass = "rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100";

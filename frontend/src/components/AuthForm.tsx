@@ -12,7 +12,8 @@ const ROLES: { value: Role; title: string; hint: string }[] = [
   { value: "owner", title: "Space owner", hint: "List and manage a parking space" },
 ];
 
-export function AuthForm({ mode }: { mode: "login" | "signup" }) {
+// `next` is a path on this site to open after logging in (e.g. a QR verify link).
+export function AuthForm({ mode, next }: { mode: "login" | "signup"; next?: string | null }) {
   const router = useRouter();
   const isSignup = mode === "signup";
   const [username, setUsername] = useState("");
@@ -28,7 +29,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
     try {
       const body = isSignup ? { username, password, role } : { username, password };
       const { user } = await api<{ user: User }>(`/auth/${mode}`, { method: "POST", body });
-      router.replace(homeFor(user.role));
+      router.replace(next ?? homeFor(user.role));
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -117,7 +118,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       <p className="mt-6 text-sm text-slate-600">
         {isSignup ? "Already have an account? " : "New to ParkSpotZ? "}
         <Link
-          href={isSignup ? "/login" : "/signup"}
+          href={`${isSignup ? "/login" : "/signup"}${next ? `?next=${encodeURIComponent(next)}` : ""}`}
           className="inline-block py-2 font-medium text-emerald-700 underline"
         >
           {isSignup ? "Log in" : "Sign up"}

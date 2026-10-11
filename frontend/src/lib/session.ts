@@ -52,7 +52,8 @@ export async function requireRole(role: Role): Promise<User> {
 }
 
 // For the login and sign-up pages: logged-in users go straight to their home.
-export async function redirectIfLoggedIn(): Promise<void> {
+// `next` is where to go instead of the home page (already checked to be a path on this site).
+export async function redirectIfLoggedIn(next?: string | null): Promise<void> {
   const user = await getCurrentUser();
-  if (user) redirect(homeFor(user.role));
+  if (user) redirect(next ?? homeFor(user.role));
 }

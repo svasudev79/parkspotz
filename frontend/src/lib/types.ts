@@ -65,3 +65,33 @@ export function bookingState(booking: Booking): "confirmed" | "cancelled" | "exp
   if (booking.status !== "pending") return booking.status;
   return booking.is_expired ? "expired" : "awaiting payment";
 }
+
+// Only paths inside this site are accepted as a "go here after login" target.
+export function safeNextPath(value: unknown): string | null {
+  return typeof value === "string" && /^\/(?!\/)[^\\]*$/.test(value) ? value : null;
+}
+
+// A confirmed booking as an owner sees it.
+export interface OwnerBooking {
+  id: number;
+  reference: string;
+  space_name: string;
+  driver: string;
+  start_time: string;
+  end_time: string;
+  amount: number;
+}
+
+export interface VerifyResult {
+  valid: boolean;
+  timing?: "upcoming" | "current" | "over";
+  booking?: Omit<OwnerBooking, "id"> & { space_address: string };
+}
+
+export interface OwnerStats {
+  period: "day" | "week" | "month";
+  from: string | null; // first IST day of the period, "YYYY-MM-DD"
+  to: string | null; // last IST day of the period
+  spaces: { space_id: number; space_name: string; bookings: number; hours: number; revenue: number }[];
+  total: { bookings: number; hours: number; revenue: number };
+}

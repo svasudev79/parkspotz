@@ -55,3 +55,19 @@ export function formatHours(hours: number): string {
   const rounded = Math.round(hours * 100) / 100;
   return `${rounded} ${rounded === 1 ? "hour" : "hours"}`;
 }
+
+// Today's date in IST as "YYYY-MM-DD".
+export function todayInIst(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: IST }).format(new Date());
+}
+
+// "2026-10-12" -> "Mon, 12 Oct 2026"
+export function formatDay(date: string): string {
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "UTC",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(`${date}T00:00:00Z`));
+}
