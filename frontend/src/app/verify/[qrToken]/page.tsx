@@ -55,7 +55,10 @@ export default async function VerifyPage(props: PageProps<"/verify/[qrToken]">) 
         ["Space", booking.space_name],
         ["When", formatWindow(booking.start_time, booking.end_time)],
         ["Allotted", formatDuration(minutesBetween(booking.start_time, booking.end_time))],
-        ["Customer", booking.customer],
+        ["Customer", booking.is_guest ? `${booking.customer} (guest)` : booking.customer],
+        // A guest has no account; the phone number they gave is shown to the
+        // space's staff here so the booking can be matched to the person.
+        ...(booking.is_guest && booking.guest_phone ? ([["Phone", booking.guest_phone]] as [string, string][]) : []),
         ...(booking.amount !== undefined ? ([["Paid", formatRupees(booking.amount)]] as [string, string][]) : []),
         ["Reference", booking.reference],
       ]

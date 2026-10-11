@@ -2,6 +2,7 @@ import { cardClass, inputClass, labelClass, secondaryButtonClass } from "@/compo
 import { formatDay, formatTime } from "@/lib/format";
 import { describeOverstay } from "@/lib/overstay";
 import type { Visit } from "@/lib/types";
+import { CustomerName } from "./CustomerName";
 import { VisitPhoto } from "./VisitPhoto";
 
 // The incoming/outgoing vehicle log for one IST day, newest first, with a date
@@ -71,7 +72,7 @@ export function VisitHistory({
                     </p>
                   )}
                   <p className="text-sm break-words text-slate-600">
-                    {visit.customer} · {visit.reference} · booked {formatTime(visit.start_time)} to{" "}
+                    <CustomerName name={visit.customer} guest={visit.is_guest} /> · {visit.reference} · booked {formatTime(visit.start_time)} to{" "}
                     {formatTime(visit.end_time)}
                   </p>
                 </div>

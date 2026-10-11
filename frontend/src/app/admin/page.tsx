@@ -103,7 +103,7 @@ export default async function AdminDashboardPage() {
               key={key}
               label={label}
               value={data.bookings[key].count}
-              note={`${formatRupees(data.bookings[key].revenue)} paid for bookings`}
+              note={`${formatRupees(data.bookings[key].revenue)} paid · ${data.bookings[key].registered} by customers, ${data.bookings[key].guest} by guests`}
             />
           ))}
         </dl>

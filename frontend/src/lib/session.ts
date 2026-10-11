@@ -42,6 +42,15 @@ export async function apiGet<T>(path: string): Promise<T | null> {
   }
 }
 
+// For the public pages (search, a space, booking): open to visitors who are
+// not logged in (guests, returned as null) and to customers. Other roles are
+// sent to their own home page.
+export async function customerOrGuest(): Promise<User | null> {
+  const user = await getCurrentUser();
+  if (user && user.role !== "customer") redirect(homeFor(user.role));
+  return user;
+}
+
 // For pages that need one role: sends visitors to /login, and users with the
 // wrong role to their own home page.
 export async function requireRole(role: Role): Promise<User> {

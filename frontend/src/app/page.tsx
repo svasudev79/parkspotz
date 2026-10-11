@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { SearchPageContent } from "@/components/SearchPageContent";
 import { getCurrentUser } from "@/lib/session";
 import { homeFor } from "@/lib/types";
 
-// "/" has no content of its own: it sends each visitor to the right place.
-export default async function Home() {
+export const metadata: Metadata = { title: "Find parking · ParkSpotZ" };
+
+// The entry screen. Visitors who are not logged in get the search screen
+// straight away (guest mode); logged-in users go to their own home page.
+export default async function Home(props: PageProps<"/">) {
   const user = await getCurrentUser();
-  redirect(user ? homeFor(user.role) : "/login");
+  if (user) redirect(homeFor(user.role));
+  return <SearchPageContent query={await props.searchParams} />;
 }

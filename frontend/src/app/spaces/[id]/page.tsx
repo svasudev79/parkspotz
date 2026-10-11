@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { BackLink } from "@/components/BackLink";
 import { BookingPanel } from "@/components/BookingPanel";
 import { cardClass } from "@/components/ui";
 import { capitalize, formatRupees } from "@/lib/format";
-import { apiGet, requireUser } from "@/lib/session";
+import { apiGet, getCurrentUser } from "@/lib/session";
 import { homeFor, type Space } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Parking space · ParkSpotZ" };
@@ -17,7 +17,9 @@ function parseTime(value: string | string[] | undefined): Date | null {
 }
 
 export default async function SpacePage(props: PageProps<"/spaces/[id]">) {
-  const user = await requireUser();
+  // Open to guests (not logged in), customers and owners.
+  const user = await getCurrentUser();
+  if (user && user.role !== "customer" && user.role !== "owner") redirect(homeFor(user.role));
   const { id } = await props.params;
   const query = await props.searchParams;
   const data = await apiGet<{ space: Space }>(`/spaces/${encodeURIComponent(id)}`);
@@ -39,7 +41,9 @@ export default async function SpacePage(props: PageProps<"/spaces/[id]">) {
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6">
-      <BackLink fallback={homeFor(user.role)}>← Back to {user.role === "owner" ? "my spaces" : "search"}</BackLink>
+      <BackLink fallback={user ? homeFor(user.role) : "/"}>
+        ← Back to {user?.role === "owner" ? "my spaces" : "search"}
+      </BackLink>
 
       <div>
         <h1 className="text-2xl font-bold break-words">{space.name}</h1>
@@ -55,8 +59,13 @@ export default async function SpacePage(props: PageProps<"/spaces/[id]">) {
         ))}
       </dl>
 
-      {user.role === "customer" && (
-        <BookingPanel space={space} start={start && end ? start.toISOString() : null} end={start && end ? end.toISOString() : null} />
+      {user?.role !== "owner" && (
+        <BookingPanel
+          space={space}
+          start={start && end ? start.toISOString() : null}
+          end={start && end ? end.toISOString() : null}
+          guest={!user}
+        />
       )}
     </main>
   );

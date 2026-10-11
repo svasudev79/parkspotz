@@ -4,25 +4,40 @@ import { BookingStatus } from "@/components/BookingStatus";
 import { VisitSummary } from "@/components/VisitSummary";
 import { cardClass, primaryButtonClass } from "@/components/ui";
 import { formatRupees, formatWindow } from "@/lib/format";
-import { apiGet, requireRole } from "@/lib/session";
+import { apiGet, customerOrGuest } from "@/lib/session";
 import { bookingState, type Booking } from "@/lib/types";
 
 export const metadata: Metadata = { title: "My bookings · ParkSpotZ" };
 
 export default async function BookingsPage() {
-  await requireRole("customer");
-  const data = await apiGet<{ bookings: Booking[] }>("/bookings");
+  // Customers see their account's bookings; a visitor who is not logged in
+  // sees the guest bookings made in this browser.
+  const user = await customerOrGuest();
+  const data = await apiGet<{ bookings: Booking[] }>(user ? "/bookings" : "/guest/bookings");
   const bookings = data?.bookings ?? [];
 
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-6">
       <h1 className="text-2xl font-bold">My bookings</h1>
+      {!user && (
+        <p className="mt-2 text-sm text-slate-600">
+          Bookings made as a guest in this browser.{" "}
+          <Link href="/signup?next=/bookings" className="font-medium text-emerald-700 underline">
+            Sign up
+          </Link>{" "}
+          or{" "}
+          <Link href="/login?next=/bookings" className="font-medium text-emerald-700 underline">
+            log in
+          </Link>{" "}
+          as a customer to move them into an account and see them on any device.
+        </p>
+      )}
 
       {!data && <p className="mt-6 text-red-700">Could not load your bookings. Please refresh the page.</p>}
       {data && bookings.length === 0 && (
         <div className="mt-6 flex flex-col items-start gap-3">
           <p className="text-slate-600">You have no bookings yet.</p>
-          <Link href="/search" className={primaryButtonClass}>
+          <Link href={user ? "/search" : "/"} className={primaryButtonClass}>
             Find parking
           </Link>
         </div>
@@ -44,7 +59,9 @@ export default async function BookingsPage() {
               </p>
               <VisitSummary booking={booking} />
               <Link
-                href={state === "awaiting payment" ? `/bookings/${booking.id}/pay` : `/bookings/${booking.id}`}
+                href={`${user ? `/bookings/${booking.id}` : `/receipt/${booking.access_token}`}${
+                  state === "awaiting payment" ? "/pay" : ""
+                }`}
                 className="inline-flex h-11 items-center self-start rounded-lg text-base font-semibold text-emerald-700 underline"
               >
                 {state === "confirmed" ? "View receipt" : state === "awaiting payment" ? "Pay now" : "View booking"}

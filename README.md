@@ -71,7 +71,7 @@ cd frontend
 npm run dev               # web app on http://localhost:3000
 ```
 
-Open http://localhost:3000 and log in with a demo account:
+Open http://localhost:3000. It opens on the search screen: you can search, book and pay as a guest without logging in. Or log in with a demo account:
 
 | Role | Username | Password |
 |------|----------|----------|
@@ -115,6 +115,8 @@ npm run db:stop
 | `backend/.env` | `OVERSTAY_BLOCK_MINUTES` | Overstay is billed in started blocks of this many minutes, default 30 |
 | `backend/.env` | `OVERSTAY_RATE_PERCENT` | Overstay rate as a percentage of the space's hourly price, default 100 |
 | `backend/.env` | `UPLOADS_DIR` | Folder for entry photos, default `backend/uploads` |
+| `backend/.env` | `GUEST_MAX_PENDING` | How many unpaid bookings a guest browser, and an IP address, may hold at once, default 2 |
+| `backend/.env` | `TRUST_PROXY_HOPS` | How many proxies in front of the API are trusted for the caller's address, default 1 (the Next.js `/api` forwarding) |
 | `backend/.env` | `RENTAL_DUE_DAY` | Day of the month a rental invoice falls due, default 7 |
 | `backend/.env` | `ADMIN_USERNAME`, `ADMIN_PASSWORD` | The platform admin login, read only by `npm run admin:create` |
 | `backend/.env` | `PAYMENT_MODE` | `mock` or `razorpay` (see Payments) |
@@ -191,6 +193,10 @@ npm run build
 ## What the app does
 
 - **Accounts.** Sign up as a customer or a space owner, log in, log out (username and password; the session is an httpOnly cookie). Each role is kept out of the other role's pages.
+- **Guest mode.** The first screen is the search screen, with no login. Anyone can search, open a space, book and pay without an account by giving a name and an Indian mobile number at the confirm step (no OTP). The guest then lands on a private receipt link (`/receipt/<long random token>`) with the QR code, which works on any device without logging in and is kept out of search engines and referrers. The same browser lists its guest bookings under My bookings. All booking rules are the same as for customers.
+- **Guest to customer.** When someone signs up or logs in as a customer in a browser that holds guest bookings, those bookings move to that account at that moment and appear under its My bookings. The old receipt links keep working.
+- **Guests and the gate.** Owners and attendants see a guest's name with a "Guest" tag wherever a customer name appears. The guest's phone number is shown only on the check screen for that booking, to the space's owner and attendants. The admin sees only how many bookings came from guests.
+- **Limits on guests.** A guest browser, and an IP address, can each hold at most 2 unpaid bookings at a time (`GUEST_MAX_PENDING`); paying, cancelling or letting a hold expire frees a place. Logged-in customers are not limited.
 - **Owners: spaces.** Add and edit parking spaces: name, address, location, type, ownership, number of slots, price per hour, opening hours, and whether the space is listed.
 - **Customers: search.** Search near a destination within 500 m, 1 km or 2 km for a date, start time and duration. Results are sorted by distance and show the price and how many slots are free for that time. A space that is closed for the chosen time is still shown, marked "Closed at this time". The search is kept in the page address, so going back to it or reloading shows the same results.
 - **Customers: booking and payment.** Book a space for the searched time (30 minutes to 24 hours, inside the space's opening hours, starting in the future) and pay. Two customers cannot take the same last slot.
@@ -223,6 +229,10 @@ npm run build
 - **Number plates and vehicle photos are personal data.** There is no retention policy yet: nothing deletes old visits or photos. Decide how long to keep them before using this with real customers.
 - **Overstay is collected at the gate only** (cash or UPI, recorded by the attendant). The app does not take overstay payments online and does not check that the money was actually received.
 - **A removed attendant's username stays taken**, because the account is deactivated and not deleted.
+- **Guest phone numbers are not verified.** There is no OTP, so a guest can type any number.
+- **A lost guest receipt link cannot be recovered** except from the browser that made the booking (My bookings), and only while that browser keeps its cookie (30 days). There is no way to look a guest booking up by phone number.
+- **Guest names and phone numbers are personal data** with no retention policy yet, like number plates and photos.
+- **The per-IP guest limit depends on the proxy in front of the app.** The API takes the caller's address from the last `X-Forwarded-For` entry (`TRUST_PROXY_HOPS=1`). Run directly as described here, with nothing in front of Next.js, a caller can forge that header and so get around the per-IP limit; the per-browser limit can be avoided by clearing cookies. When deployed, put the app behind a proxy or platform that overwrites `X-Forwarded-For` and set `TRUST_PROXY_HOPS` to the number of proxies between the internet and the API.
 - **No password reset and no login rate limiting.**
 - **Rental has no auto-debit and no reminders.** Owners pay each invoice themselves; nobody is emailed or messaged.
 - **Rental non-payment is flag-only.** An overdue invoice changes nothing about how the space works.

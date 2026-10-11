@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CustomerName } from "@/components/CustomerName";
 import { SpaceFacts } from "@/components/SpaceFacts";
 import { cardClass, primaryButtonClass, secondaryButtonClass } from "@/components/ui";
 import { apiGet, requireRole } from "@/lib/session";
@@ -92,7 +93,8 @@ export default async function OwnerSpacesPage() {
                     <span className="font-normal text-slate-600"> · {booking.space_name}</span>
                   </p>
                   <p className="text-sm text-slate-600">
-                    {booking.customer} · {formatRupees(booking.amount)} · {booking.reference}
+                    <CustomerName name={booking.customer} guest={booking.is_guest} /> · {formatRupees(booking.amount)} ·{" "}
+                    {booking.reference}
                   </p>
                 </li>
               ))}

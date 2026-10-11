@@ -32,7 +32,7 @@ export async function Header() {
   return (
     <header className="border-b border-slate-200 bg-white print:hidden">
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2">
-        <Link href={user ? homeFor(user.role) : "/login"} className="py-2 text-lg font-bold text-emerald-700">
+        <Link href={user ? homeFor(user.role) : "/"} className="py-2 text-lg font-bold text-emerald-700">
           ParkSpotZ
         </Link>
 
@@ -54,14 +54,25 @@ export async function Header() {
             </nav>
           </>
         ) : (
-          <nav className="flex items-center gap-1">
-            <Link href="/login" className={navLinkClass}>
-              Log in
-            </Link>
-            <Link href="/signup" className={`${navLinkClass} text-emerald-700`}>
-              Sign up
-            </Link>
-          </nav>
+          <>
+            <nav className="flex items-center gap-1 sm:order-3">
+              <Link href="/login" className={navLinkClass}>
+                Log in
+              </Link>
+              <Link href="/signup" className={`${navLinkClass} text-emerald-700`}>
+                Sign up
+              </Link>
+            </nav>
+            {/* Guests can search and book without an account. */}
+            <nav className="-mx-3 flex w-full items-center gap-1 sm:order-2 sm:mx-0 sm:w-auto sm:flex-1">
+              <Link href="/" className={navLinkClass}>
+                Find parking
+              </Link>
+              <Link href="/bookings" className={navLinkClass}>
+                My bookings
+              </Link>
+            </nav>
+          </>
         )}
       </div>
     </header>

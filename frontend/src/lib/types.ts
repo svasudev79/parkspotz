@@ -18,7 +18,7 @@ export const OWNERSHIPS = ["public", "private", "metro"] as const;
 
 export interface Space {
   id: number;
-  owner_id: number;
+  owner_id?: number; // only sent to the space's own owner
   name: string;
   address: string;
   lat: number;
@@ -53,6 +53,11 @@ export interface Booking {
   created_at: string;
   reference: string; // e.g. "PSZ-000042"
   verify_url: string | null; // what the receipt QR encodes; set once confirmed
+  // Guest bookings only (booked without an account): the guest's details and
+  // the token their private receipt link is made from.
+  guest_name?: string | null;
+  guest_phone?: string | null;
+  access_token?: string | null;
   // Set once the vehicle has left: when it came and went, and any overstay.
   visit: {
     entry_at: string;
@@ -87,6 +92,7 @@ export interface OwnerBooking {
   reference: string;
   space_name: string;
   customer: string;
+  is_guest: boolean;
   start_time: string;
   end_time: string;
   amount: number;
@@ -98,7 +104,9 @@ export interface Visit {
   space_id: number;
   space_name: string;
   reference: string; // booking reference, e.g. "PSZ-000042"
-  customer: string;
+  customer: string; // account username, or the name a guest gave
+  is_guest: boolean;
+  guest_phone?: string | null; // only on the check screen / single visit
   start_time: string; // booked window
   end_time: string;
   vehicle_number: string | null;
@@ -135,6 +143,8 @@ export interface GateView {
     space_name: string;
     space_address: string;
     customer: string;
+    is_guest: boolean;
+    guest_phone: string | null;
     start_time: string;
     end_time: string;
     amount?: number; // owners only; attendants never receive it
@@ -147,7 +157,14 @@ export interface GateView {
 export interface GateHome {
   space: { id: number; name: string; address: string; total_slots: number; open_time: string; close_time: string };
   inside: Visit[];
-  expected: { reference: string; qr_token: string; customer: string; start_time: string; end_time: string }[];
+  expected: {
+    reference: string;
+    qr_token: string;
+    customer: string;
+    is_guest: boolean;
+    start_time: string;
+    end_time: string;
+  }[];
   now: string; // server time
 }
 
@@ -215,7 +232,7 @@ export interface AdminDashboard {
   in_use: { vehicles_inside: number; slots_booked_now: number };
   utilisation: Record<"day" | "week" | "month", UsageFigure>;
   rental: { month: string; invoiced: number; collected: number; outstanding: number; overdue_count: number };
-  bookings: Record<"day" | "week" | "month", { count: number; revenue: number }>;
+  bookings: Record<"day" | "week" | "month", { count: number; revenue: number; guest: number; registered: number }>;
 }
 
 export interface AdminSpace {

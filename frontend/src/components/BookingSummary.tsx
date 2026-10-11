@@ -11,6 +11,10 @@ export function BookingSummary({ booking }: { booking: Booking }) {
     ["Duration", formatHours(hours)],
     ["Amount", formatRupees(booking.amount)],
     ["Reference", booking.reference],
+    // Guest bookings carry the name and number the guest gave.
+    ...(booking.guest_name
+      ? ([["Booked by", `${booking.guest_name}${booking.guest_phone ? ` · ${booking.guest_phone}` : ""}`]] as [string, string][])
+      : []),
   ];
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-base">

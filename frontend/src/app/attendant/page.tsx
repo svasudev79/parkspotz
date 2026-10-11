@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CustomerName } from "@/components/CustomerName";
 import { ExitControl } from "@/components/ExitControl";
 import { ReferenceLookup } from "@/components/ReferenceLookup";
 import { TimeLeft } from "@/components/TimeLeft";
@@ -53,7 +54,7 @@ export default async function AttendantPage() {
                     </p>
                     <p className="text-base text-slate-700">Entered at {formatTime(visit.entry_at)}</p>
                     <p className="text-sm break-words text-slate-600">
-                      {visit.customer} · {visit.reference}
+                      <CustomerName name={visit.customer} guest={visit.is_guest} /> · {visit.reference}
                     </p>
                   </div>
                   <VisitPhoto visit={visit} />
@@ -83,7 +84,7 @@ export default async function AttendantPage() {
                       {formatTime(booking.start_time)} to {formatTime(booking.end_time)}
                     </span>
                     <span className="text-sm break-words text-slate-600">
-                      {booking.customer} · {booking.reference}
+                      <CustomerName name={booking.customer} guest={booking.is_guest} /> · {booking.reference}
                     </span>
                   </span>
                   <span className="shrink-0 font-semibold text-emerald-700">Check ›</span>
