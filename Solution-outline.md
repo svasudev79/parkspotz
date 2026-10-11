@@ -1,10 +1,10 @@
 # ParkSpotZ — Draft Solution Outline (Phase 1)
 
-Draft based on [Goal-spec.md](Goal-spec.md). Scope is Phase 1 only: car parking, owner-managed spaces, responsive web, one developer, built in a single day (the spec allows two weekends).
+Draft based on [Goal-spec.md](Goal-spec.md). Scope is Phase 1 only: car parking, owner-managed spaces, a responsive web app that also installs on a phone's home screen, one developer, built in a single day (the spec allows two weekends).
 
 ## 1. What Phase 1 delivers
 
-Two roles using one responsive web app:
+Two roles using one responsive web app, usable in desktop and mobile browsers and installable on a phone (see [section 7](#7-mobile)):
 
 | Role | Can do |
 |------|--------|
@@ -14,10 +14,11 @@ Two roles using one responsive web app:
 ## 2. Architecture
 
 ```
-Browser (desktop + mobile)
+Desktop browser · mobile browser · installed app on phone home screen
    │
    ▼
 Next.js frontend (Vercel) ── Google Maps JS + Places Autocomplete
+   │  /api/* forwarded by Next.js, so the browser only ever talks to one site
    │  REST / JSON, session cookie
    ▼
 Express API (TypeScript, GCP Cloud Run)
@@ -37,6 +38,8 @@ This is the same shape as the earlier scaffold (Next.js + Express + Postgres), s
 | Auth | Username + password, hashed with bcrypt, httpOnly session cookie (JWT) | Spec asks for username + password; avoids a third-party auth dependency |
 | Payments | Razorpay in test mode | Supports UPI and cards in India; no real money moves in Phase 1 |
 | QR code | `qrcode` npm package, rendered on the receipt page | No external service needed |
+| API routing | Next.js rewrites `/api/*` to the Express API | Frontend and API live on different domains; iPhone Safari blocks login cookies across domains, so the API must appear under the frontend's own address |
+| Mobile install | Web app manifest + small service worker (a PWA) | Gives a home-screen icon and full-screen app feel without an app store; see section 7 |
 
 ## 3. Data model
 
@@ -127,9 +130,50 @@ Deferred from the one-day build: `POST /verify/:qrToken/check-in` (owner marks a
 - Owner: QR verify
 - Owner: usage and revenue stats
 
-## 7. Build plan
+## 7. Mobile
 
-Single-day build, about 10 hours of focused work. Each block is a time box: when it runs out, move on and come back only if there is time left at the end.
+The spec keeps a native app for Phase 2, so Phase 1 reaches phones in two steps that need no app store: the site works well in a mobile browser, and it can be installed to the home screen as a progressive web app (PWA). Section 7.4 covers the later move to a store-listed app.
+
+### 7.1 What changes from a desktop-first build
+
+| Area | Change | Why it matters on a phone |
+|------|--------|---------------------------|
+| Layout | Search screen becomes a full-screen map with the results list in a pull-up sheet; bottom navigation bar; buttons and inputs at least 44 px tall | One-handed use; map and list cannot sit side by side on a narrow screen |
+| Location | "Use my location" button next to the destination box (browser geolocation) | Most drivers search for parking near where they are or are heading right now |
+| Directions | "Navigate" button on the space details and receipt, opening Google Maps with the space as destination | Hands the driver to turn-by-turn navigation |
+| Receipt offline | Service worker caches the receipt page and its QR code once viewed | Basement and multilevel parking often has no signal at the entry gate |
+| Install | Web app manifest (name, icons, theme colour, standalone display) | Home-screen icon; opens without browser address bar |
+| Login | API served under the frontend's own address (see section 2) | Cross-domain login cookies fail on iPhone Safari |
+| Payment | Razorpay Checkout's mobile flow, which can hand off to an installed UPI app | UPI is the default way to pay on a phone in India |
+| QR scan | Owner uses the phone's built-in camera, which opens the verify link | No in-app scanner to build |
+
+The data model does not change. The only API change is accepting the session token in a header as well as a cookie (section 7.4).
+
+### 7.2 Screens on a phone
+
+- **Search:** destination box and "use my location" at the top, map behind, results in a sheet that pulls up from the bottom; tapping a pin scrolls the sheet to that space.
+- **Space details:** price, slots available and the booking form on one scrolling page, with the "Book and pay" button fixed at the bottom.
+- **Receipt:** QR code large enough to scan from another phone, with "Navigate" below it.
+- **Bottom bar:** Search and My bookings for drivers; My spaces, Stats for owners.
+- **Owner forms and stats:** single-column; the stats table scrolls sideways inside its own box.
+
+### 7.3 Platform limits to know about
+
+- **Android (Chrome):** shows an "Install app" prompt; everything above works.
+- **iPhone (Safari):** installs through Share → "Add to Home Screen", with no automatic prompt. Geolocation, offline receipt and payment work.
+- **HTTPS is required** for geolocation, installation and the service worker, so these can only be tried on a phone after deploying.
+- **Not available without a native app:** app store listing and reliable push notifications on every device.
+
+### 7.4 Path to a store-listed app (Phase 2)
+
+1. **Wrap the existing web app** with Capacitor (or a Trusted Web Activity on Android) to publish it on Google Play and the App Store. Lowest effort; reuses all Phase 1 screens.
+2. **Rebuild the screens in React Native (Expo)** only if the wrapped app feels limiting. The Express API is reused unchanged.
+
+To keep both options open, Phase 1 should hold to two rules: all business logic stays in the API and never in page code, and the API accepts the session token in an `Authorization` header as well as the cookie, since native apps do not use browser cookies.
+
+## 8. Build plan
+
+Single-day build, about 11.5 hours of focused work (the mobile work in section 7 adds roughly 1.5 hours). Each block is a time box: when it runs out, move on and come back only if there is time left at the end.
 
 | # | Block | Time box | Done when |
 |---|-------|----------|-----------|
@@ -142,7 +186,8 @@ Single-day build, about 10 hours of focused work. Each block is a time box: when
 | 5 | Payment: Razorpay test checkout and confirmation | 1 h 15 min | A test payment turns a booking `confirmed` |
 | 6 | Receipt with QR code; "My bookings" | 45 min | Receipt opens after payment and can be saved as PDF |
 | 7 | Owner side: QR verify page and stats table (day / week / month) | 1 h | Owner sees revenue and can validate a QR |
-| 8 | Mobile layout pass, seed a few Bangalore spaces, deploy | 1 h | App is reachable at a public URL on a phone |
+| 8 | Mobile: phone layout (map with pull-up results sheet, bottom bar, large touch targets), "use my location", "Navigate" button, web app manifest and icons | 1 h 15 min | Every screen is usable at phone width |
+| 9 | Offline receipt (service worker), seed a few Bangalore spaces, deploy over HTTPS, install on a phone | 1 h 15 min | App is installed on a phone from its public URL and the receipt opens in airplane mode |
 
 Simplifications that make one day realistic:
 
@@ -152,13 +197,15 @@ Simplifications that make one day realistic:
 - **QR verify shows valid / invalid only**; marking check-in is dropped.
 - **Deploy last.** Everything is built and tested locally first, so a deployment problem cannot block feature work.
 
-If the day runs short, cut from the bottom: deploy (demo locally), then block 7, then block 5 (mark bookings confirmed without payment). Blocks 0–3 are the part that must not slip, since they cover the spec's success metrics.
+Build screens phone-width first from block 1 onward, so block 8 is a tidy-up and not a rewrite.
 
-## 8. Test plan
+If the day runs short, cut in this order: the offline receipt, then deploy and install (demo locally at phone width in the browser), then block 7, then block 5 (mark bookings confirmed without payment). Blocks 0–3 are the part that must not slip, since they cover the spec's success metrics.
 
-Run after block 8 of the build plan, and run the walkthrough once more at the checkpoint after block 3 (steps 1-5 only).
+## 9. Test plan
 
-### 8.1 End-to-end walkthrough
+Run after block 9 of the build plan, and run the walkthrough once more at the checkpoint after block 3 (steps 1-5 only).
+
+### 9.1 End-to-end walkthrough
 
 Use two browser windows, one normal and one private, to be logged in as an owner and a driver at the same time. Start from seed data: a few Bangalore parking spaces near one known destination (e.g. MG Road metro).
 
@@ -177,7 +224,7 @@ Use two browser windows, one normal and one private, to be logged in as an owner
 
 Steps 1–5 cover every success metric in the spec. Steps 6–10 cover booking and payment.
 
-### 8.2 Targeted checks
+### 9.2 Targeted checks
 
 | Rule | Test | Expect |
 |------|------|--------|
@@ -187,23 +234,39 @@ Steps 1–5 cover every success metric in the spec. Steps 6–10 cover booking a
 | Failed payment | Use Razorpay's test failure option | Booking does not become `confirmed` |
 | Opening hours | Book outside 08:00–22:00 | Rejected |
 | Access control | Driver opens an owner page; owner requests another owner's stats; open a made-up QR token | Refused, refused, shown as invalid |
-| Mobile | Repeat steps 3–8 on a phone or at phone width | Usable without horizontal scrolling |
 
-### 8.3 Practical notes
+### 9.3 Mobile checks
+
+Run on a real phone against the deployed URL; Android Chrome first, iPhone Safari if one is available.
+
+| Check | Test | Expect |
+|-------|------|--------|
+| Layout | Repeat walkthrough steps 3–8 on the phone | No sideways scrolling; every button reachable with a thumb |
+| Login on iPhone | Log in, close the tab, reopen | Still logged in |
+| Location allowed | Tap "use my location" and allow | Map centres on the current position and lists nearby spaces |
+| Location refused | Tap "use my location" and deny | Clear message; typing a destination still works |
+| Install | Install to the home screen and open from the icon | Opens full screen with the ParkSpotZ icon and name |
+| Offline receipt | View a receipt, switch to airplane mode, reopen it from My bookings | Receipt and QR code still display |
+| Navigate | Tap "Navigate" on a receipt | Google Maps opens with the space as destination |
+| QR between phones | Show the receipt on one phone, scan it with another phone's camera | Verify page opens and shows the booking as valid |
+| Payment | Pay using Razorpay's test UPI ID on the phone | Returns to the app with the booking confirmed |
+
+### 9.4 Practical notes
 
 - **Payments cost nothing.** In Razorpay test mode no real money moves; Razorpay's documentation lists the test card numbers and UPI IDs.
 - **QR scanning needs a reachable URL.** The QR encodes a link and a phone cannot open `localhost`. Test scanning after deploying, or paste the verify link into the browser while running locally.
 - **Time-dependent cases** such as the 10-minute hold are quicker to test with the hold temporarily set to 1 minute.
 
-### 8.4 Automation
+### 9.5 Automation
 
 Given the one-day budget, automate only the two rules most likely to break silently later: the last-slot check and the overlap check, as API tests. The walkthrough stays manual (or is driven through the browser by Claude) and can become a Playwright test in Phase 2.
 
-## 9. Proposed out of scope for Phase 1
+## 10. Proposed out of scope for Phase 1
 
 The spec's "Out of Scope" section is empty; suggested entries:
 
-- Bike parking, ParkSpotZ-managed spaces, native mobile app (already Phase 2)
+- Bike parking, ParkSpotZ-managed spaces, native or store-listed mobile app (already Phase 2; Phase 1 is an installable web app)
+- In-app QR scanner
 - Real payouts to owners (test-mode payments only)
 - Cancellations and refunds
 - Extending a booking, overstay charges, dynamic pricing
@@ -212,7 +275,7 @@ The spec's "Out of Scope" section is empty; suggested entries:
 - Ratings, reviews, notifications (SMS / email / push)
 - Password reset
 
-## 10. Open questions
+## 11. Open questions
 
 1. **Owner use case is cut off.** Section 3 of the spec ends at "…run day to day operations like being able to charge". What should owners be able to charge or do?
 2. **Payments in Phase 1:** is test mode enough, or must real money be collected? Real collection needs a registered Razorpay account and a plan for paying owners.
@@ -220,4 +283,5 @@ The spec's "Out of Scope" section is empty; suggested entries:
 4. **Booking rules:** how far ahead can a driver book, and is there a minimum or maximum duration?
 5. **Can one account be both driver and owner?** The outline assumes a single role per account.
 6. **Who can list a space?** The glossary mentions public and metro ownership; in Phase 1, is every listing created by a private owner, or will some be seeded by you?
-7. **Hosting:** keep Vercel + Cloud Run + Cloud SQL from the earlier scaffold, or is a cheaper single-service setup acceptable?
+7. **Mobile:** is an installable web app enough for now, or is a Play Store / App Store listing needed sooner than Phase 2?
+8. **Hosting:** keep Vercel + Cloud Run + Cloud SQL from the earlier scaffold, or is a cheaper single-service setup acceptable?

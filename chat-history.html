@@ -38,7 +38,7 @@ details.tool pre { max-height:320px; overflow:auto; color:var(--text); }
 </style></head>
 <body><main>
 <h1>ParkSpotZ chat history</h1>
-<p class="sub">1 session(s) &middot; exported 11 Oct 2026, 10:06</p>
+<p class="sub">1 session(s) &middot; exported 11 Oct 2026, 10:08</p>
 <h2 class="session">GitHub connection <small class="sub">started 11 Oct 2026, 08:20</small></h2>
 <div class="msg user"><div class="who">You<time>11 Oct 2026, 08:20</time></div><p>which github is this project connected to?</p></div>
 <details class="tool"><summary>Bash: List git remotes and branch tracking</summary><pre><code>git -C /Users/vasumac/Documents/vasu_iisc/parking-app remote -v; git -C /Users/vasumac/Documents/vasu_iisc/parking-app branch -vv</code></pre><pre><code>(Bash completed with no output)</code></pre></details>
@@ -965,6 +965,406 @@ grep -n &quot;^## \|^### &quot; Solution-outline.md &amp;&amp; python3 tools/exp
 import re;s=open(&#x27;chat-history.html&#x27;).read()
 print(&#x27;token-like strings:&#x27;,len(re.findall(r&#x27;ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|rzp_(test|live)_[A-Za-z0-9]{8,}|AIza[0-9A-Za-z_-]{30,}&#x27;,s)))&quot; &amp;&amp; git add Solution-outline.md chat-history.html &amp;&amp; git commit -q -m &quot;$(cat &lt;&lt;&#x27;EOF&#x27;
 Add test plan to solution outline
+
+Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;
+EOF
+)&quot; &amp;&amp; GIT_TERMINAL_PROMPT=0 git push 2&gt;&amp;1; echo &quot;exit $?&quot;; git status -sb</code></pre><pre><code>5:## 1. What Phase 1 delivers
+14:## 2. Architecture
+41:## 3. Data model
+73:## 4. Key flows
+98:## 5. API outline
+118:## 6. Screens
+130:## 7. Build plan
+157:## 8. Test plan
+161:### 8.1 End-to-end walkthrough
+180:### 8.2 Targeted checks
+192:### 8.3 Practical notes
+198:### 8.4 Automation
+202:## 9. Proposed out of scope for Phase 1
+215:## 10. Open questions
+Wrote /Users/vasumac/Documents/vasu_iisc/parking-app/chat-history.html (1 session(s))
+token-like strings: 0
+To https://github.com/svasudev79/parkspotz.git
+   7a8c7da..67e689b  main -&gt; main
+exit 0
+## main...origin/main</code></pre></details>
+<div class="msg"><div class="who">Claude<time>11 Oct 2026, 10:06</time></div><p>The test plan is now section 8 of <a href="Solution-outline.md">Solution-outline.md</a>, committed and pushed as <code>67e689b</code> along with a refreshed <code>chat-history.html</code>.</p>
+<p>It has four parts:</p>
+<ul><li><strong>8.1 End-to-end walkthrough:</strong> the ten owner/driver steps, with what to expect at each.</li><li><strong>8.2 Targeted checks:</strong> last slot, overlap, abandoned and failed payment, opening hours, access control and mobile.</li><li><strong>8.3 Practical notes:</strong> Razorpay test mode, why QR scanning needs a deployed URL, and shortening the 10-minute hold for testing.</li><li><strong>8.4 Automation:</strong> only the last-slot and overlap rules as API tests; the walkthrough stays manual for now.</li></ul>
+<p>Two things changed beyond pasting in what I described:</p>
+<ul><li>I added a line saying to run steps 1–5 at the checkpoint after build block 3, so the spec's success metrics are verified before starting on booking and payment.</li><li>"Proposed out of scope" and "Open questions" moved down to sections 9 and 10 to make room.</li></ul></div>
+<div class="msg user"><div class="who">You<time>11 Oct 2026, 10:07</time></div><p>if we want to update this solution to run on mobile then can you update the Solution-outline.md with the necessary changes</p></div>
+<details class="tool"><summary>Read: /Users/vasumac/Documents/vasu_iisc/parking-app/Solution-outline.md</summary><pre><code>1	# ParkSpotZ — Draft Solution Outline (Phase 1)
+2	
+3	Draft based on [Goal-spec.md](Goal-spec.md). Scope is Phase 1 only: car parking, owner-managed spaces, responsive web, one developer, built in a single day (the spec allows two weekends).
+4	
+5	## 1. What Phase 1 delivers
+6	
+7	Two roles using one responsive web app:
+8	
+9	| Role | Can do |
+10	|------|--------|
+11	| Driver | Sign up / log in, search a destination, see nearby parking spaces on a map and in a list with slots available, book a date/time/duration, pay, get a receipt with a QR code |
+12	| Owner | Sign up / log in, onboard a parking space (slots, price, opening hours), see bookings, verify a QR code at entry, view day/week/month usage and revenue |
+13	
+14	## 2. Architecture
+15	
+16	```
+17	Browser (desktop + mobile)
+18	   │
+19	   ▼
+20	Next.js frontend (Vercel) ── Google Maps JS + Places Autocomplete
+21	   │  REST / JSON, session cookie
+22	   ▼
+23	Express API (TypeScript, GCP Cloud Run)
+24	   │                    │
+25	   ▼                    ▼
+26	Postgres (Cloud SQL)   Razorpay (test mode)
+27	```
+28	
+29	This is the same shape as the earlier scaffold (Next.js + Express + Postgres), so that code can be restored and extended rather than rewritten.
+30	
+31	| Concern | Choice | Why |
+32	|---------|--------|-----|
+33	| Frontend | Next.js + Tailwind | Already scaffolded; responsive by default |
+34	| Map and destination search | Google Maps JavaScript API + Places Autocomplete | Spec&#x27;s success metric names a Google map view; Places turns a typed destination into lat/lng |
+35	| API | Express + TypeScript | Already scaffolded |
+36	| Database | Postgres | Relational data, transactional booking |
+37	| Auth | Username + password, hashed with bcrypt, httpOnly session cookie (JWT) | Spec asks for username + password; avoids a third-party auth dependency |
+38	| Payments | Razorpay in test mode | Supports UPI and cards in India; no real money moves in Phase 1 |
+39	| QR code | `qrcode` npm package, rendered on the receipt page | No external service needed |
+40	
+41	## 3. Data model
+42	
+43	```
+44	users
+45	  id, username (unique), password_hash, role (&#x27;driver&#x27; | &#x27;owner&#x27;), created_at
+46	
+47	parking_spaces
+48	  id, owner_id → users, name, address, lat, lng,
+49	  space_type (&#x27;basement&#x27; | &#x27;multilevel&#x27; | &#x27;surface&#x27;),
+50	  ownership  (&#x27;public&#x27; | &#x27;private&#x27; | &#x27;metro&#x27;),
+51	  total_slots, price_per_hour, open_time, close_time,
+52	  is_active, created_at
+53	
+54	bookings
+55	  id, user_id → users, space_id → parking_spaces,
+56	  start_time, end_time, amount,
+57	  status (&#x27;pending&#x27; | &#x27;confirmed&#x27; | &#x27;cancelled&#x27;),
+58	  qr_token (unique, random), created_at
+59	
+60	payments
+61	  id, booking_id → bookings, provider_order_id, provider_payment_id,
+62	  amount, status, created_at
+63	```
+64	
+65	Key design decisions:
+66	
+67	- **Slots are a count, not individual records.** A space has `total_slots`; a booking reserves any one slot. Numbered slots can come in Phase 2.
+68	- **Availability** for a time window = `total_slots` − bookings in `pending` or `confirmed` status whose time range overlaps the window.
+69	- **No double booking.** Creating a booking runs in a transaction that locks the parking space row, recounts overlapping bookings, and inserts only if a slot is free.
+70	- **Unpaid bookings expire.** A `pending` booking holds a slot for 10 minutes; after that it stops counting against availability, which releases the slot.
+71	- **Times** are stored in UTC and displayed in IST.
+72	
+73	## 4. Key flows
+74	
+75	**Search**
+76	1. Driver types a destination; Places Autocomplete returns its lat/lng.
+77	2. Driver picks a radius (e.g. 500 m, 1 km, 2 km) and a date/time/duration.
+78	3. API returns active spaces within the radius (Haversine distance in SQL), each with distance, price and slots available for that window.
+79	4. Results are shown as map pins and as a list sorted by distance; the two views stay in sync.
+80	
+81	**Book and pay**
+82	1. Driver selects a space and confirms the time window; the API creates a `pending` booking and a Razorpay order.
+83	2. Razorpay Checkout opens in the browser.
+84	3. On success the API verifies the payment signature, then marks the booking `confirmed`.
+85	4. Driver lands on the receipt page.
+86	
+87	**Receipt and QR**
+88	- Receipt shows space name, address, date, time window, amount, booking reference and a QR code.
+89	- The QR encodes a verification URL containing the booking&#x27;s random `qr_token`.
+90	- The receipt is saved by the browser&#x27;s print-to-PDF; it also stays available under &quot;My bookings&quot;.
+91	
+92	**Owner onboarding and operations**
+93	1. Owner fills a form: name, address (Places Autocomplete, with a draggable map pin), type, ownership, number of slots, price per hour, opening and closing time.
+94	2. Owner dashboard lists their spaces and today&#x27;s bookings.
+95	3. At entry the owner scans the driver&#x27;s QR with a phone camera; it opens the verify page, which shows whether the booking is valid for that space and time.
+96	4. Stats page shows bookings, hours booked and revenue by day, week and month.
+97	
+98	## 5. API outline
+99	
+100	| Method | Path | Purpose |
+101	|--------|------|---------|
+102	| POST | `/auth/signup`, `/auth/login`, `/auth/logout` | Account and session |
+103	| GET | `/auth/me` | Current user |
+104	| GET | `/spaces?lat&amp;lng&amp;radius&amp;start&amp;end` | Nearby spaces with availability |
+105	| GET | `/spaces/:id` | Space details |
+106	| POST | `/spaces` | Owner creates a space |
+107	| PATCH | `/spaces/:id` | Owner edits a space |
+108	| GET | `/owner/spaces` | Owner&#x27;s own spaces |
+109	| GET | `/owner/stats?spaceId&amp;period` | Usage and revenue |
+110	| POST | `/bookings` | Create pending booking + payment order |
+111	| POST | `/bookings/:id/confirm` | Verify payment, confirm booking |
+112	| GET | `/bookings` | Driver&#x27;s bookings |
+113	| GET | `/bookings/:id` | Receipt data |
+114	| GET | `/verify/:qrToken` | Owner checks a QR code |
+115	
+116	Deferred from the one-day build: `POST /verify/:qrToken/check-in` (owner marks arrival) and `POST /webhooks/razorpay` (payment status backup).
+117	
+118	## 6. Screens
+119	
+120	- Login / Sign up (with driver or owner choice)
+121	- Search: destination box, radius, time window, map + list
+122	- Space details and booking form
+123	- Payment (Razorpay Checkout overlay)
+124	- Receipt with QR code
+125	- My bookings
+126	- Owner: my spaces, add / edit space
+127	- Owner: QR verify
+128	- Owner: usage and revenue stats
+129	
+130	## 7. Build plan
+131	
+132	Single-day build, about 10 hours of focused work. Each block is a time box: when it runs out, move on and come back only if there is time left at the end.
+133	
+134	| # | Block | Time box | Done when |
+135	|---|-------|----------|-----------|
+136	| 0 | Setup: restore the scaffold, apply the new schema to a local Postgres, get a Google Maps API key and Razorpay test keys | 45 min | Frontend and API run locally and talk to each other |
+137	| 1 | Auth: sign up, log in, log out, session cookie, driver/owner routing | 1 h | Both roles can log in and land on their own home screen |
+138	| 2 | Owner onboarding: add-space form with address autocomplete, &quot;my spaces&quot; list | 1 h | An owner can list a space with slots, price and hours |
+139	| 3 | Search: API with radius and availability; screen with destination box, map pins and list | 2 h | A driver sees nearby spaces with slots available on map and list |
+140	| | **Checkpoint — every success metric in the spec is met (about 4 h 45 min in)** | | |
+141	| 4 | Booking: space details, booking form, slot locking | 1 h 15 min | Booking the last slot twice is refused |
+142	| 5 | Payment: Razorpay test checkout and confirmation | 1 h 15 min | A test payment turns a booking `confirmed` |
+143	| 6 | Receipt with QR code; &quot;My bookings&quot; | 45 min | Receipt opens after payment and can be saved as PDF |
+144	| 7 | Owner side: QR verify page and stats table (day / week / month) | 1 h | Owner sees revenue and can validate a QR |
+145	| 8 | Mobile layout pass, seed a few Bangalore spaces, deploy | 1 h | App is reachable at a public URL on a phone |
+146	
+147	Simplifications that make one day realistic:
+148	
+149	- **No payment webhook.** Confirmation relies on the signature check when the driver returns from checkout.
+150	- **No background job for expiry.** A `pending` booking older than 10 minutes is simply ignored when counting availability.
+151	- **Stats as a plain table**, no charts.
+152	- **QR verify shows valid / invalid only**; marking check-in is dropped.
+153	- **Deploy last.** Everything is built and tested locally first, so a deployment problem cannot block feature work.
+154	
+155	If the day runs short, cut from the bottom: deploy (demo locally), then block 7, then block 5 (mark bookings confirmed without payment). Blocks 0–3 are the part that must not slip, since they cover the spec&#x27;s success metrics.
+156	
+157	## 8. Test plan
+158	
+159	Run after block 8 of the build plan, and run the walkthrough once more at the checkpoint after block 3 (steps 1-5 only).
+160	
+161	### 8.1 End-to-end walkthrough
+162	
+163	Use two browser windows, one normal and one private, to be logged in as an owner and a driver at the same time. Start from seed data: a few Bangalore parking spaces near one known destination (e.g. MG Road metro).
+164	
+165	| # | As | Do | Expect |
+166	|---|----|----|--------|
+167	| 1 | Owner | Sign up, log in | Lands on owner home |
+168	| 2 | Owner | Add a space near the destination: 2 slots, ₹40/hour, 08:00–22:00 | Appears in &quot;my spaces&quot; |
+169	| 3 | Driver | Sign up, log in | Lands on search |
+170	| 4 | Driver | Search the destination, 1 km radius, tomorrow 10:00 for 2 hours | New space shows on map and list with &quot;2 slots available&quot; |
+171	| 5 | Driver | Shrink the radius to 500 m, then search a far-away destination | Space drops out when out of range |
+172	| 6 | Driver | Book it and pay with a Razorpay test card or test UPI ID | Booking becomes `confirmed`; receipt opens showing ₹80 and a QR code |
+173	| 7 | Driver | Repeat the same search | Now &quot;1 slot available&quot; |
+174	| 8 | Driver | Save the receipt as PDF; open &quot;My bookings&quot; | Booking is listed and the receipt reopens |
+175	| 9 | Owner | Open the QR&#x27;s verify link | Booking shows as valid |
+176	| 10 | Owner | Open stats | 1 booking, 2 hours, ₹80 for the day |
+177	
+178	Steps 1–5 cover every success metric in the spec. Steps 6–10 cover booking and payment.
+179	
+180	### 8.2 Targeted checks
+181	
+182	| Rule | Test | Expect |
+183	|------|------|--------|
+184	| Last slot | Set a space to 1 slot; two drivers book the same window | Second booking is refused |
+185	| Overlap | With the slot booked 10:00–12:00, search 11:00–13:00, then 12:00–14:00 | 0 available, then 1 available |
+186	| Abandoned payment | Start a booking and close the Razorpay window without paying | Slot is held, then free again after 10 minutes |
+187	| Failed payment | Use Razorpay&#x27;s test failure option | Booking does not become `confirmed` |
+188	| Opening hours | Book outside 08:00–22:00 | Rejected |
+189	| Access control | Driver opens an owner page; owner requests another owner&#x27;s stats; open a made-up QR token | Refused, refused, shown as invalid |
+190	| Mobile | Repeat steps 3–8 on a phone or at phone width | Usable without horizontal scrolling |
+191	
+192	### 8.3 Practical notes
+193	
+194	- **Payments cost nothing.** In Razorpay test mode no real money moves; Razorpay&#x27;s documentation lists the test card numbers and UPI IDs.
+195	- **QR scanning needs a reachable URL.** The QR encodes a link and a phone cannot open `localhost`. Test scanning after deploying, or paste the verify link into the browser while running locally.
+196	- **Time-dependent cases** such as the 10-minute hold are quicker to test with the hold temporarily set to 1 minute.
+197	
+198	### 8.4 Automation
+199	
+200	Given the one-day budget, automate only the two rules most likely to break silently later: the last-slot check and the overlap check, as API tests. The walkthrough stays manual (or is driven through the browser by Claude) and can become a Playwright test in Phase 2.
+201	
+202	## 9. Proposed out of scope for Phase 1
+203	
+204	The spec&#x27;s &quot;Out of Scope&quot; section is empty; suggested entries:
+205	
+206	- Bike parking, ParkSpotZ-managed spaces, native mobile app (already Phase 2)
+207	- Real payouts to owners (test-mode payments only)
+208	- Cancellations and refunds
+209	- Extending a booking, overstay charges, dynamic pricing
+210	- Individually numbered slots
+211	- Owner identity or property verification
+212	- Ratings, reviews, notifications (SMS / email / push)
+213	- Password reset
+214	
+215	## 10. Open questions
+216	
+217	1. **Owner use case is cut off.** Section 3 of the spec ends at &quot;…run day to day operations like being able to charge&quot;. What should owners be able to charge or do?
+218	2. **Payments in Phase 1:** is test mode enough, or must real money be collected? Real collection needs a registered Razorpay account and a plan for paying owners.
+219	3. **Pricing model:** flat price per hour only, or also daily rates and minimum durations?
+220	4. **Booking rules:** how far ahead can a driver book, and is there a minimum or maximum duration?
+221	5. **Can one account be both driver and owner?** The outline assumes a single role per account.
+222	6. **Who can list a space?** The glossary mentions public and metro ownership; in Phase 1, is every listing created by a private owner, or will some be seeded by you?
+223	7. **Hosting:** keep Vercel + Cloud Run + Cloud SQL from the earlier scaffold, or is a cheaper single-service setup acceptable?
+224	</code></pre></details>
+<details class="tool"><summary>Bash: Add the mobile section and update architecture, build plan, test plan and scope to match</summary><pre><code>python3 -I - &lt;&lt;&#x27;PYEOF&#x27;
+p=&#x27;Solution-outline.md&#x27;
+s=open(p).read()
+def rep(a,b,count=1):
+    global s
+    assert s.count(a)&gt;=1, a
+    s=s.replace(a,b) if count==0 else s.replace(a,b,count)
+
+# intro and section 1
+rep(&quot;owner-managed spaces, responsive web, one developer,&quot;,&quot;owner-managed spaces, a responsive web app that also installs on a phone&#x27;s home screen, one developer,&quot;)
+rep(&quot;Two roles using one responsive web app:&quot;,&quot;Two roles using one responsive web app, usable in desktop and mobile browsers and installable on a phone (see [section 7](#7-mobile)):&quot;)
+
+# architecture
+rep(&quot;&quot;&quot;Browser (desktop + mobile)
+   │
+   ▼
+Next.js frontend (Vercel) ── Google Maps JS + Places Autocomplete
+   │  REST / JSON, session cookie
+   ▼&quot;&quot;&quot;,&quot;&quot;&quot;Desktop browser · mobile browser · installed app on phone home screen
+   │
+   ▼
+Next.js frontend (Vercel) ── Google Maps JS + Places Autocomplete
+   │  /api/* forwarded by Next.js, so the browser only ever talks to one site
+   │  REST / JSON, session cookie
+   ▼&quot;&quot;&quot;)
+rep(&quot;&quot;&quot;| QR code | `qrcode` npm package, rendered on the receipt page | No external service needed |&quot;&quot;&quot;,&quot;&quot;&quot;| QR code | `qrcode` npm package, rendered on the receipt page | No external service needed |
+| API routing | Next.js rewrites `/api/*` to the Express API | Frontend and API live on different domains; iPhone Safari blocks login cookies across domains, so the API must appear under the frontend&#x27;s own address |
+| Mobile install | Web app manifest + small service worker (a PWA) | Gives a home-screen icon and full-screen app feel without an app store; see section 7 |&quot;&quot;&quot;)
+
+# renumber later sections (do highest first)
+rep(&quot;## 10. Open questions&quot;,&quot;## 11. Open questions&quot;)
+rep(&quot;## 9. Proposed out of scope for Phase 1&quot;,&quot;## 10. Proposed out of scope for Phase 1&quot;)
+for n in (&quot;1&quot;,&quot;2&quot;,&quot;3&quot;,&quot;4&quot;):
+    rep(f&quot;### 8.{n} &quot;,f&quot;### 9.{n} &quot;)
+rep(&quot;## 8. Test plan&quot;,&quot;## 9. Test plan&quot;)
+rep(&quot;## 7. Build plan&quot;,&quot;## 8. Build plan&quot;)
+
+mobile = &#x27;&#x27;&#x27;## 7. Mobile
+
+The spec keeps a native app for Phase 2, so Phase 1 reaches phones in two steps that need no app store: the site works well in a mobile browser, and it can be installed to the home screen as a progressive web app (PWA). Section 7.4 covers the later move to a store-listed app.
+
+### 7.1 What changes from a desktop-first build
+
+| Area | Change | Why it matters on a phone |
+|------|--------|---------------------------|
+| Layout | Search screen becomes a full-screen map with the results list in a pull-up sheet; bottom navigation bar; buttons and inputs at least 44 px tall | One-handed use; map and list cannot sit side by side on a narrow screen |
+| Location | &quot;Use my location&quot; button next to the destination box (browser geolocation) | Most drivers search for parking near where they are or are heading right now |
+| Directions | &quot;Navigate&quot; button on the space details and receipt, opening Google Maps with the space as destination | Hands the driver to turn-by-turn navigation |
+| Receipt offline | Service worker caches the receipt page and its QR code once viewed | Basement and multilevel parking often has no signal at the entry gate |
+| Install | Web app manifest (name, icons, theme colour, standalone display) | Home-screen icon; opens without browser address bar |
+| Login | API served under the frontend&#x27;s own address (see section 2) | Cross-domain login cookies fail on iPhone Safari |
+| Payment | Razorpay Checkout&#x27;s mobile flow, which can hand off to an installed UPI app | UPI is the default way to pay on a phone in India |
+| QR scan | Owner uses the phone&#x27;s built-in camera, which opens the verify link | No in-app scanner to build |
+
+Nothing in the data model or API has to change.
+
+### 7.2 Screens on a phone
+
+- **Search:** destination box and &quot;use my location&quot; at the top, map behind, results in a sheet that pulls up from the bottom; tapping a pin scrolls the sheet to that space.
+- **Space details:** price, slots available and the booking form on one scrolling page, with the &quot;Book and pay&quot; button fixed at the bottom.
+- **Receipt:** QR code large enough to scan from another phone, with &quot;Navigate&quot; below it.
+- **Bottom bar:** Search and My bookings for drivers; My spaces, Stats for owners.
+- **Owner forms and stats:** single-column; the stats table scrolls sideways inside its own box.
+
+### 7.3 Platform limits to know about
+
+- **Android (Chrome):** shows an &quot;Install app&quot; prompt; everything above works.
+- **iPhone (Safari):** installs through Share → &quot;Add to Home Screen&quot;, with no automatic prompt. Geolocation, offline receipt and payment work.
+- **HTTPS is required** for geolocation, installation and the service worker, so these can only be tried on a phone after deploying.
+- **Not available without a native app:** app store listing and reliable push notifications on every device.
+
+### 7.4 Path to a store-listed app (Phase 2)
+
+1. **Wrap the existing web app** with Capacitor (or a Trusted Web Activity on Android) to publish it on Google Play and the App Store. Lowest effort; reuses all Phase 1 screens.
+2. **Rebuild the screens in React Native (Expo)** only if the wrapped app feels limiting. The Express API is reused unchanged.
+
+To keep both options open, Phase 1 should hold to two rules: all business logic stays in the API and never in page code, and the API accepts the session token in an `Authorization` header as well as the cookie, since native apps do not use browser cookies.
+
+&#x27;&#x27;&#x27;
+rep(&quot;## 8. Build plan&quot;, mobile + &quot;## 8. Build plan&quot;)
+
+# build plan
+rep(&quot;Single-day build, about 10 hours of focused work.&quot;,&quot;Single-day build, about 11.5 hours of focused work (the mobile work in section 7 adds roughly 1.5 hours).&quot;)
+rep(&quot;&quot;&quot;| 8 | Mobile layout pass, seed a few Bangalore spaces, deploy | 1 h | App is reachable at a public URL on a phone |&quot;&quot;&quot;,&quot;&quot;&quot;| 8 | Mobile: phone layout (map with pull-up results sheet, bottom bar, large touch targets), &quot;use my location&quot;, &quot;Navigate&quot; button, web app manifest and icons | 1 h 15 min | Every screen is usable at phone width |
+| 9 | Offline receipt (service worker), seed a few Bangalore spaces, deploy over HTTPS, install on a phone | 1 h 15 min | App is installed on a phone from its public URL and the receipt opens in airplane mode |&quot;&quot;&quot;)
+rep(&quot;If the day runs short, cut from the bottom: deploy (demo locally), then block 7, then block 5 (mark bookings confirmed without payment).&quot;,&quot;Build screens phone-width first from block 1 onward, so block 8 is a tidy-up and not a rewrite.\n\nIf the day runs short, cut in this order: the offline receipt, then deploy and install (demo locally at phone width in the browser), then block 7, then block 5 (mark bookings confirmed without payment).&quot;)
+
+# test plan
+rep(&quot;Run after block 8 of the build plan,&quot;,&quot;Run after block 9 of the build plan,&quot;)
+rep(&quot;&quot;&quot;| Mobile | Repeat steps 3–8 on a phone or at phone width | Usable without horizontal scrolling |
+&quot;&quot;&quot;,&quot;&quot;)
+rep(&quot;### 9.3 Practical notes&quot;,&quot;&quot;&quot;### 9.3 Mobile checks
+
+Run on a real phone against the deployed URL; Android Chrome first, iPhone Safari if one is available.
+
+| Check | Test | Expect |
+|-------|------|--------|
+| Layout | Repeat walkthrough steps 3–8 on the phone | No sideways scrolling; every button reachable with a thumb |
+| Login on iPhone | Log in, close the tab, reopen | Still logged in |
+| Location allowed | Tap &quot;use my location&quot; and allow | Map centres on the current position and lists nearby spaces |
+| Location refused | Tap &quot;use my location&quot; and deny | Clear message; typing a destination still works |
+| Install | Install to the home screen and open from the icon | Opens full screen with the ParkSpotZ icon and name |
+| Offline receipt | View a receipt, switch to airplane mode, reopen it from My bookings | Receipt and QR code still display |
+| Navigate | Tap &quot;Navigate&quot; on a receipt | Google Maps opens with the space as destination |
+| QR between phones | Show the receipt on one phone, scan it with another phone&#x27;s camera | Verify page opens and shows the booking as valid |
+| Payment | Pay using Razorpay&#x27;s test UPI ID on the phone | Returns to the app with the booking confirmed |
+
+### 9.4 Practical notes&quot;&quot;&quot;)
+rep(&quot;### 9.4 Automation&quot;,&quot;### 9.5 Automation&quot;)
+
+# out of scope and open questions
+rep(&quot;- Bike parking, ParkSpotZ-managed spaces, native mobile app (already Phase 2)&quot;,&quot;- Bike parking, ParkSpotZ-managed spaces, native or store-listed mobile app (already Phase 2; Phase 1 is an installable web app)\n- In-app QR scanner and push notifications&quot;)
+rep(&quot;7. **Hosting:**&quot;,&quot;7. **Mobile:** is an installable web app enough for now, or is a Play Store / App Store listing needed sooner than Phase 2?\n8. **Hosting:**&quot;)
+open(p,&#x27;w&#x27;).write(s)
+PYEOF
+grep -n &quot;^## \|^### &quot; Solution-outline.md</code></pre><pre><code>5:## 1. What Phase 1 delivers
+14:## 2. Architecture
+44:## 3. Data model
+76:## 4. Key flows
+101:## 5. API outline
+121:## 6. Screens
+133:## 7. Mobile
+137:### 7.1 What changes from a desktop-first build
+152:### 7.2 Screens on a phone
+160:### 7.3 Platform limits to know about
+167:### 7.4 Path to a store-listed app (Phase 2)
+174:## 8. Build plan
+204:## 9. Test plan
+208:### 9.1 End-to-end walkthrough
+227:### 9.2 Targeted checks
+238:### 9.3 Mobile checks
+254:### 9.4 Practical notes
+260:### 9.5 Automation
+264:## 10. Proposed out of scope for Phase 1
+278:## 11. Open questions</code></pre></details>
+<details class="tool"><summary>Bash: Tidy two lines, refresh the chat export, then commit and push</summary><pre><code>python3 -I - &lt;&lt;&#x27;PYEOF&#x27;
+p=&#x27;Solution-outline.md&#x27;
+s=open(p).read()
+for a,b in [(&quot;- In-app QR scanner and push notifications&quot;,&quot;- In-app QR scanner&quot;),
+(&quot;Nothing in the data model or API has to change.&quot;,&quot;The data model does not change. The only API change is accepting the session token in a header as well as a cookie (section 7.4).&quot;)]:
+    assert a in s; s=s.replace(a,b)
+open(p,&#x27;w&#x27;).write(s)
+PYEOF
+python3 tools/export_chat.py &amp;&amp; python3 -I -c &quot;
+import re;s=open(&#x27;chat-history.html&#x27;).read()
+print(&#x27;token-like strings:&#x27;,len(re.findall(r&#x27;ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|rzp_(test|live)_[A-Za-z0-9]{8,}|AIza[0-9A-Za-z_-]{30,}&#x27;,s)))&quot; &amp;&amp; git add Solution-outline.md chat-history.html &amp;&amp; git commit -q -m &quot;$(cat &lt;&lt;&#x27;EOF&#x27;
+Add mobile (installable web app) plan to solution outline
 
 Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;
 EOF
