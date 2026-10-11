@@ -44,6 +44,33 @@ async function paidBooking(spaceId: number, startedMinutesAgo: number): Promise<
   return { id, token: rows[0].qr_token };
 }
 
+// Every property name anywhere inside a JSON value.
+function allKeys(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap(allKeys);
+  if (value && typeof value === "object") {
+    return Object.entries(value).flatMap(([key, inner]) => [key, ...allKeys(inner)]);
+  }
+  return [];
+}
+
+// A vehicle that entered space A (40 per hour) on time and whose booking
+// ended `lateMinutes` minutes ago. Returns the visit id and booking id.
+async function vehicleInsideLate(lateMinutes: number): Promise<{ visitId: number; bookingId: number }> {
+  const { id, token } = await paidBooking(spaceA, 5);
+  const entry = await call(attendantA, "POST", "/visits", { qr_token: token });
+  assert.equal(entry.status, 201);
+  await pool.query(
+    `UPDATE bookings SET start_time = now() - make_interval(mins => $2::int + 120),
+                         end_time = now() - make_interval(mins => $2::int)
+     WHERE id = $1`,
+    [id, lateMinutes]
+  );
+  await pool.query("UPDATE visits SET entry_at = now() - make_interval(mins => $2::int + 110) WHERE booking_id = $1", [
+    id, lateMinutes,
+  ]);
+  return { visitId: entry.body.visit.id, bookingId: id };
+}
+
 async function createAttendant(spaceId: number, username: string): Promise<Session> {
   const created = await call(owner, "POST", `/owner/spaces/${spaceId}/attendants`, {
     username,
@@ -198,12 +225,18 @@ test("entry is only allowed from 15 minutes before the start until the end", asy
 
 test("attendants never receive amounts, prices or revenue", async () => {
   const { token } = await paidBooking(spaceA, 5);
-  await call(attendantA, "POST", "/visits", { qr_token: token });
+  const entry = await call(attendantA, "POST", "/visits", { qr_token: token });
+  const visitId: number = entry.body.visit.id;
 
-  for (const path of [`/verify/${token}`, "/gate/home", "/visits"]) {
+  // The only money an attendant may see is a vehicle's own overstay charge
+  // (and the public hourly rate that explains it). Never the booking amount.
+  const allowed = new Set(["overstay_amount", "block_amount", "price_per_hour"]);
+  for (const path of [`/verify/${token}`, "/gate/home", "/visits", `/visits/${visitId}`]) {
     const res = await call(attendantA, "GET", path);
     assert.equal(res.status, 200, path);
-    assert.doesNotMatch(JSON.stringify(res.body), /amount|price|revenue/i, path);
+    const moneyKeys = allKeys(res.body).filter((key) => /amount|price|revenue|total(?!_slots)|paid/i.test(key));
+    assert.deepEqual(moneyKeys.filter((key) => !allowed.has(key)), [], path);
+    assert.ok(allKeys(res.body).includes("overstay_amount"), `${path} has the visit's overstay amount`);
   }
   // The owner still sees the amount on the same booking.
   assert.equal((await call(owner, "GET", `/verify/${token}`)).body.booking.amount, 80);
@@ -247,4 +280,118 @@ test("a removed attendant can no longer log in or use an old session", async () 
   assert.equal((await call(temp, "GET", "/gate/home")).status, 403);
   assert.deepEqual((await call(temp, "GET", `/verify/${token}`)).body, { valid: false });
   assert.equal((await call(temp, "POST", "/visits", { qr_token: token })).status, 404);
+});
+
+test("overstay at 40/hour: leaving on time or 10 min late costs 0 and exit is a single request", async () => {
+  for (const late of [0, 10]) {
+    const { visitId } = await vehicleInsideLate(late);
+    const exit = await call(attendantA, "POST", `/visits/${visitId}/exit`);
+    assert.equal(exit.status, 200, `${late} min late`);
+    assert.equal(exit.body.visit.overstay_minutes, late);
+    assert.equal(exit.body.visit.overstay_amount, 0);
+    assert.equal(exit.body.visit.overstay_settlement, "none");
+  }
+});
+
+test("overstay at 40/hour: 11 min late = 20, 30 min = 20, 31 min = 40, 50 min = 40", async () => {
+  for (const [late, expected] of [[11, 20], [30, 20], [31, 40], [50, 40]] as const) {
+    const { visitId } = await vehicleInsideLate(late);
+
+    // The amount due is shown before exit...
+    const shown = await call(attendantA, "GET", `/visits/${visitId}`);
+    assert.equal(shown.body.visit.overstay_amount, expected, `${late} min late`);
+    assert.equal(shown.body.visit.overstay_minutes, late);
+
+    // ...and exit is refused until the attendant says how it was settled.
+    const unsettled = await call(attendantA, "POST", `/visits/${visitId}/exit`);
+    assert.equal(unsettled.status, 400);
+    assert.deepEqual(unsettled.body.overstay, { minutes: late, amount: expected });
+    assert.equal((await call(attendantA, "POST", `/visits/${visitId}/exit`, { settlement: "card" })).status, 400);
+
+    const exit = await call(attendantA, "POST", `/visits/${visitId}/exit`, {
+      settlement: late === 30 ? "upi" : "cash",
+      amount_shown: expected,
+    });
+    assert.equal(exit.status, 200);
+    assert.equal(exit.body.visit.overstay_amount, expected);
+    assert.equal(exit.body.visit.overstay_settlement, late === 30 ? "upi" : "cash");
+    assert.equal(exit.body.visit.exit_by, "gate_attendant_a");
+  }
+});
+
+test("overstay: waiving needs a reason, and a stale amount is refused", async () => {
+  const { visitId } = await vehicleInsideLate(45); // 2 blocks = 40
+
+  assert.equal((await call(attendantA, "POST", `/visits/${visitId}/exit`, { settlement: "waived" })).status, 400);
+  assert.equal(
+    (await call(attendantA, "POST", `/visits/${visitId}/exit`, { settlement: "waived", waive_reason: " x " })).status,
+    400
+  );
+  // The screen showed 20 but 40 is now due: refuse, and say what is due.
+  const stale = await call(attendantA, "POST", `/visits/${visitId}/exit`, { settlement: "cash", amount_shown: 20 });
+  assert.equal(stale.status, 409);
+  assert.equal(stale.body.overstay.amount, 40);
+
+  const waived = await call(attendantA, "POST", `/visits/${visitId}/exit`, {
+    settlement: "waived",
+    waive_reason: "Gate was blocked by a delivery truck",
+    amount_shown: 40,
+  });
+  assert.equal(waived.status, 200);
+  assert.equal(waived.body.visit.overstay_settlement, "waived");
+  assert.equal(waived.body.visit.overstay_amount, 40);
+  assert.equal(waived.body.visit.overstay_waive_reason, "Gate was blocked by a delivery truck");
+});
+
+test("overstay: a double exit records one exit and one charge", async () => {
+  for (let round = 0; round < 5; round++) {
+    const { visitId } = await vehicleInsideLate(20); // 1 block = 20
+    const results = await Promise.all([
+      call(attendantA, "POST", `/visits/${visitId}/exit`, { settlement: "cash" }),
+      call(attendantA, "POST", `/visits/${visitId}/exit`, { settlement: "upi" }),
+      call(owner, "POST", `/visits/${visitId}/exit`, { settlement: "cash" }),
+    ]);
+    assert.deepEqual(results.map((r) => r.status).sort(), [200, 409, 409]);
+    const winner = results.find((r) => r.status === 200)!.body.visit;
+    const { rows } = await pool.query(
+      "SELECT overstay_amount::float AS amount, overstay_settlement FROM visits WHERE id = $1",
+      [visitId]
+    );
+    assert.deepEqual(rows[0], { amount: 20, overstay_settlement: winner.overstay_settlement });
+  }
+});
+
+test("overstay shows up for the owner (stats) and the customer (booking), not as booking revenue", async () => {
+  const collected = await vehicleInsideLate(50); // 40, paid in cash
+  await call(attendantA, "POST", `/visits/${collected.visitId}/exit`, { settlement: "cash" });
+  const waived = await vehicleInsideLate(15); // 20, waived
+  await call(attendantA, "POST", `/visits/${waived.visitId}/exit`, { settlement: "waived", waive_reason: "Regular customer" });
+
+  // Customer: entry and exit times and the overstay on their own booking.
+  const booking = await call(customer, "GET", `/bookings/${collected.bookingId}`);
+  assert.equal(booking.body.booking.visit.overstay_minutes, 50);
+  assert.equal(booking.body.booking.visit.overstay_amount, 40);
+  assert.equal(booking.body.booking.visit.overstay_settlement, "cash");
+  assert.ok(booking.body.booking.visit.entry_at && booking.body.booking.visit.exit_at);
+  assert.equal(booking.body.booking.amount, 80); // the booking price itself is unchanged
+
+  // Owner: overstay is reported apart from booking revenue. Both test
+  // bookings were moved to a few hours ago, so look at this month's stats for space A.
+  const { rows } = await pool.query(
+    `SELECT COALESCE(sum(b.amount), 0)::float AS revenue,
+            COALESCE(sum(v.overstay_amount) FILTER (WHERE v.overstay_settlement IN ('cash', 'upi')), 0)::float AS collected,
+            COALESCE(sum(v.overstay_amount) FILTER (WHERE v.overstay_settlement = 'waived'), 0)::float AS waived
+     FROM bookings b LEFT JOIN visits v ON v.booking_id = b.id
+     WHERE b.space_id = $1 AND b.status = 'confirmed'
+       AND date_trunc('month', b.start_time AT TIME ZONE 'Asia/Kolkata')
+         = date_trunc('month', now() AT TIME ZONE 'Asia/Kolkata')`,
+    [spaceA]
+  );
+  const stats = await call(owner, "GET", `/owner/stats?period=month&spaceId=${spaceA}`);
+  assert.equal(stats.status, 200);
+  assert.equal(stats.body.total.revenue, rows[0].revenue);
+  assert.equal(stats.body.total.overstay_collected, rows[0].collected);
+  assert.equal(stats.body.total.overstay_waived, rows[0].waived);
+  assert.ok(stats.body.total.overstay_collected >= 40);
+  assert.ok(stats.body.total.overstay_waived >= 20);
 });

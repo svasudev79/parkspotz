@@ -98,3 +98,12 @@ CREATE TABLE IF NOT EXISTS visits (
 );
 
 CREATE INDEX IF NOT EXISTS idx_visits_space_entry ON visits (space_id, entry_at);
+
+-- Overstay, worked out by the server when exit is recorded (see src/overstay.ts).
+ALTER TABLE visits ADD COLUMN IF NOT EXISTS overstay_minutes INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE visits ADD COLUMN IF NOT EXISTS overstay_amount NUMERIC(10, 2) NOT NULL DEFAULT 0;
+-- How an overstay charge was settled at the gate: none (nothing was due),
+-- cash, upi or waived. NULL while the vehicle is still inside.
+ALTER TABLE visits ADD COLUMN IF NOT EXISTS overstay_settlement TEXT
+  CHECK (overstay_settlement IN ('none', 'cash', 'upi', 'waived'));
+ALTER TABLE visits ADD COLUMN IF NOT EXISTS overstay_waive_reason TEXT;

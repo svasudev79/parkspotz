@@ -49,6 +49,9 @@ ownerRouter.get("/bookings", async (req, res) => {
 
 // GET /owner/stats?period=day|week|month&spaceId&date=YYYY-MM-DD
 // Confirmed bookings, hours booked and revenue per space, plus a total.
+// Overstay charges are reported separately from booking revenue:
+// overstay_collected (cash + UPI at the gate) and overstay_waived, both
+// counted in the period of the booking they belong to.
 // A booking counts in the period its start time falls in. Periods are IST
 // calendar periods containing `date` (default today); weeks start on Monday.
 ownerRouter.get("/stats", async (req, res) => {
@@ -75,6 +78,8 @@ ownerRouter.get("/stats", async (req, res) => {
             count(b.id)::int AS bookings,
             COALESCE(sum(extract(epoch FROM b.end_time - b.start_time)) / 3600, 0)::float AS hours,
             COALESCE(sum(b.amount), 0)::float AS revenue,
+            COALESCE(sum(v.overstay_amount) FILTER (WHERE v.overstay_settlement IN ('cash', 'upi')), 0)::float AS overstay_collected,
+            COALESCE(sum(v.overstay_amount) FILTER (WHERE v.overstay_settlement = 'waived'), 0)::float AS overstay_waived,
             to_char(bounds.from_local, 'YYYY-MM-DD') AS from_date,
             to_char(bounds.from_local + ('1 ' || $3)::interval - interval '1 day', 'YYYY-MM-DD') AS to_date
      FROM parking_spaces s
@@ -83,6 +88,7 @@ ownerRouter.get("/stats", async (req, res) => {
        ON b.space_id = s.id AND b.status = 'confirmed'
       AND b.start_time >= bounds.from_local AT TIME ZONE 'Asia/Kolkata'
       AND b.start_time < (bounds.from_local + ('1 ' || $3)::interval) AT TIME ZONE 'Asia/Kolkata'
+     LEFT JOIN visits v ON v.booking_id = b.id
      WHERE s.owner_id = $1 AND ($2::int IS NULL OR s.id = $2)
      GROUP BY s.id, s.name, bounds.from_local
      ORDER BY s.name, s.id`,
@@ -102,6 +108,8 @@ ownerRouter.get("/stats", async (req, res) => {
       bookings: spaces.reduce((sum, row) => sum + row.bookings, 0),
       hours: Math.round(spaces.reduce((sum, row) => sum + row.hours, 0) * 100) / 100,
       revenue: Math.round(spaces.reduce((sum, row) => sum + row.revenue, 0) * 100) / 100,
+      overstay_collected: Math.round(spaces.reduce((sum, row) => sum + row.overstay_collected, 0) * 100) / 100,
+      overstay_waived: Math.round(spaces.reduce((sum, row) => sum + row.overstay_waived, 0) * 100) / 100,
     },
   });
 });

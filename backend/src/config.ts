@@ -31,6 +31,12 @@ export const config = {
   bookingHoldMinutes: Number(process.env.BOOKING_HOLD_MINUTES ?? 10),
   // Minutes before a booking's start time from which entry may be recorded.
   entryGraceMinutes: Number(process.env.ENTRY_GRACE_MINUTES ?? 15),
+  // Overstay: the first `overstayGraceMinutes` after the booked end are free;
+  // beyond that the whole overstay is billed in started blocks of
+  // `overstayBlockMinutes`, at `overstayRatePercent` % of the hourly price.
+  overstayGraceMinutes: Number(process.env.OVERSTAY_GRACE_MINUTES ?? 10),
+  overstayBlockMinutes: Number(process.env.OVERSTAY_BLOCK_MINUTES ?? 30),
+  overstayRatePercent: Number(process.env.OVERSTAY_RATE_PERCENT ?? 100),
   // Folder for entry photos. Never served directly; see routes/visits.ts.
   uploadsDir: resolve(process.env.UPLOADS_DIR ?? "uploads"),
   // Public address of the frontend; receipt QR codes link to it.

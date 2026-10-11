@@ -3,6 +3,7 @@ import { config } from "../config";
 import { pool } from "../db";
 import { dayStartSql, findVisit, gateView, parseDay, staffOfSpaceSql, toVisit, VISIT_SELECT } from "../gate";
 import { requireRole } from "../middleware/auth";
+import { LATE_MINUTES_SQL, overstayAmount, SETTLEMENTS } from "../overstay";
 import { deletePhoto, detectImage, photoFile, savePhoto } from "../photos";
 import { parseId } from "../spaces";
 
@@ -44,7 +45,7 @@ visitsRouter.get("/", async (req, res) => {
      ORDER BY v.entry_at DESC, v.id DESC`,
     [req.user!.id, spaceId, day]
   );
-  res.json({ visits: rows.map(toVisit) });
+  res.json({ visits: rows.map(toVisit), now: new Date().toISOString() });
 });
 
 // POST /visits { qr_token, vehicle_number? } — record a vehicle's entry.
@@ -87,18 +88,81 @@ visitsRouter.post("/", async (req, res) => {
   res.status(201).json({ visit: toVisit(await findVisit(visitId, user)) });
 });
 
-// POST /visits/:id/exit — record that the vehicle left. Once only.
+// GET /visits/:id — one visit, with the overstay due as of now.
+visitsRouter.get("/:id", async (req, res) => {
+  const visit = await findVisit(parseId(req.params.id), req.user!);
+  if (!visit) return res.status(404).json({ error: "Visit not found" });
+  res.json({ visit: toVisit(visit), now: new Date().toISOString() });
+});
+
+// POST /visits/:id/exit { settlement?, waive_reason?, amount_shown? }
+// Records that the vehicle left, once only. The overstay charge is worked out
+// here from the server clock (see overstay.ts). If a charge is due, the
+// attendant must say how it was settled: "cash", "upi" or "waived" (with a
+// reason). `amount_shown` is the amount the attendant was shown; if the charge
+// has grown since, the exit is refused so the right amount is collected.
 visitsRouter.post("/:id/exit", async (req, res) => {
   const user = req.user!;
-  const visit = await findVisit(parseId(req.params.id), user);
-  if (!visit) return res.status(404).json({ error: "Visit not found" });
+  const visitId = parseId(req.params.id);
+  if (!(await findVisit(visitId, user))) return res.status(404).json({ error: "Visit not found" });
+  const { settlement, waive_reason, amount_shown } = req.body ?? {};
 
-  const updated = await pool.query(
-    "UPDATE visits SET exit_at = now(), exit_by = $2 WHERE id = $1 AND exit_at IS NULL",
-    [visit.id, user.id]
-  );
-  if (updated.rowCount === 0) return res.status(409).json({ error: "Exit was already recorded" });
-  res.json({ visit: toVisit(await findVisit(visit.id, user)) });
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    // Lock the visit so a double tap records one exit and one charge.
+    const locked = (
+      await client.query(
+        `SELECT v.exit_at, s.price_per_hour, ${LATE_MINUTES_SQL} AS late_minutes
+         FROM visits v
+         JOIN bookings b ON b.id = v.booking_id
+         JOIN parking_spaces s ON s.id = v.space_id
+         WHERE v.id = $1 FOR UPDATE OF v`,
+        [visitId]
+      )
+    ).rows[0];
+
+    let problem: { status: number; error: string } | null = null;
+    const lateMinutes: number = locked.late_minutes;
+    const due = overstayAmount(lateMinutes, Number(locked.price_per_hour));
+    let reason: string | null = null;
+
+    if (locked.exit_at) problem = { status: 409, error: "Exit was already recorded" };
+    else if (due > 0) {
+      if (!SETTLEMENTS.includes(settlement)) {
+        problem = { status: 400, error: "An overstay charge is due. Choose how it was settled: cash, UPI or waived." };
+      } else if (typeof amount_shown === "number" && amount_shown !== due) {
+        problem = { status: 409, error: "The overstay charge has changed. Check the new amount." };
+      } else if (settlement === "waived") {
+        reason = typeof waive_reason === "string" ? waive_reason.trim() : "";
+        if (reason.length < 3 || reason.length > 200) {
+          problem = { status: 400, error: "Give a short reason for waiving the charge (3 to 200 characters)" };
+        }
+      }
+    }
+    if (problem) {
+      await client.query("ROLLBACK");
+      // Tell the screen what is due right now, so it can show the right amount.
+      return res.status(problem.status).json({
+        error: problem.error,
+        overstay: { minutes: lateMinutes, amount: due },
+      });
+    }
+
+    await client.query(
+      `UPDATE visits SET exit_at = now(), exit_by = $2, overstay_minutes = $3, overstay_amount = $4,
+                         overstay_settlement = $5, overstay_waive_reason = $6
+       WHERE id = $1`,
+      [visitId, user.id, lateMinutes, due, due > 0 ? settlement : "none", reason]
+    );
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+  res.json({ visit: toVisit(await findVisit(visitId, user)) });
 });
 
 // PUT /visits/:id/photo — add or replace the entry photo, until the vehicle

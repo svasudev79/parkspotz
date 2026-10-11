@@ -3,6 +3,7 @@
 // page and the entry/exit endpoints.
 import { config } from "./config";
 import { pool } from "./db";
+import { LATE_MINUTES_SQL, overstayAmount, overstayRule } from "./overstay";
 import type { SessionUser } from "./session";
 
 // SQL condition: the user in `userParam` is staff of the space aliased `s`,
@@ -35,13 +36,16 @@ export function parseDay(value: unknown): string | null | undefined {
 export const dayStartSql = (p: string) =>
   `date_trunc('day', COALESCE(${p}::date::timestamp, now() AT TIME ZONE 'Asia/Kolkata'))`;
 
-// A visit with its booking. Deliberately has no amount or price: attendants
-// must never see money.
+// A visit with its booking. Deliberately leaves out what the customer paid
+// for the booking: attendants must never see that. The only money on a visit
+// is its own overstay charge, which the attendant has to collect.
 export const VISIT_SELECT = `
   SELECT v.id, v.space_id, v.booking_id, v.vehicle_number, v.entry_at, v.exit_at,
          (v.entry_photo IS NOT NULL) AS has_photo,
+         v.overstay_minutes, v.overstay_amount, v.overstay_settlement, v.overstay_waive_reason,
          eb.username AS entry_by, xb.username AS exit_by,
-         b.start_time, b.end_time, cu.username AS customer, s.name AS space_name
+         b.start_time, b.end_time, cu.username AS customer, s.name AS space_name,
+         s.price_per_hour AS hourly_rate, ${LATE_MINUTES_SQL} AS late_minutes_now
   FROM visits v
   JOIN bookings b ON b.id = v.booking_id
   JOIN parking_spaces s ON s.id = v.space_id
@@ -49,9 +53,21 @@ export const VISIT_SELECT = `
   JOIN users eb ON eb.id = v.entry_by
   LEFT JOIN users xb ON xb.id = v.exit_by`;
 
+// JSON for a visit. While the vehicle is inside, overstay_minutes and
+// overstay_amount are the server's figures as of now; after exit they are
+// what was recorded.
 export function toVisit(row: Record<string, unknown>) {
-  const { booking_id, ...visit } = row;
-  return { ...visit, reference: bookingReference(booking_id) };
+  const { booking_id, hourly_rate, late_minutes_now, ...visit } = row;
+  const rate = Number(hourly_rate);
+  const inside = row.exit_at === null;
+  const lateMinutes = inside ? Number(late_minutes_now) : Number(row.overstay_minutes);
+  return {
+    ...visit,
+    reference: bookingReference(booking_id),
+    overstay_minutes: lateMinutes,
+    overstay_amount: inside ? overstayAmount(lateMinutes, rate) : Number(row.overstay_amount),
+    overstay_rule: overstayRule(rate),
+  };
 }
 
 // One visit the user is staff for, or null.
@@ -106,5 +122,6 @@ export async function gateView(qrToken: string, user: SessionUser) {
       ...(user.role === "owner" ? { amount: Number(row.amount) } : {}),
     },
     visit: visit ? toVisit(visit) : null,
+    now: new Date().toISOString(), // server time, for the time-left display
   };
 }

@@ -24,15 +24,25 @@ const BOOKING_SELECT = `
          (b.status = 'pending' AND NOT ${holdsSlotSql("$1")}) AS is_expired,
          b.created_at + make_interval(mins => $1::int) AS hold_expires_at,
          (SELECT p.provider_order_id FROM payments p
-          WHERE p.booking_id = b.id ORDER BY p.id DESC LIMIT 1) AS order_id
+          WHERE p.booking_id = b.id ORDER BY p.id DESC LIMIT 1) AS order_id,
+         v.entry_at, v.exit_at, v.overstay_minutes, v.overstay_amount, v.overstay_settlement
   FROM bookings b
-  JOIN parking_spaces s ON s.id = b.space_id`;
+  JOIN parking_spaces s ON s.id = b.space_id
+  LEFT JOIN visits v ON v.booking_id = b.id`;
 
 // JSON for a booking. The QR link is only given out once the booking is paid.
 function toBooking(row: Record<string, unknown>) {
-  const { qr_token, user_id: _userId, order_id: _orderId, ...rest } = row;
+  const {
+    qr_token, user_id: _userId, order_id: _orderId,
+    entry_at, exit_at, overstay_minutes, overstay_amount, overstay_settlement,
+    ...rest
+  } = row;
   return {
     ...rest,
+    // Once the vehicle has left: when it came and went, and any overstay charge.
+    visit: exit_at
+      ? { entry_at, exit_at, overstay_minutes, overstay_amount: Number(overstay_amount), overstay_settlement }
+      : null,
     amount: Number(row.amount),
     reference: `PSZ-${String(row.id).padStart(6, "0")}`,
     verify_url: row.status === "confirmed" ? `${config.appBaseUrl}/verify/${qr_token}` : null,

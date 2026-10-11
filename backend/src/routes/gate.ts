@@ -6,7 +6,7 @@ import { requireRole } from "../middleware/auth";
 export const gateRouter = Router();
 
 // GET /gate/home — the attendant's home screen: their space, the vehicles
-// inside now, and today's paid bookings that have not arrived yet.
+// inside now (overstaying first, then least time left), and today's paid bookings that have not arrived yet.
 // The space is always the one the attendant is attached to. No amounts.
 gateRouter.get("/home", requireRole("attendant"), async (req, res) => {
   const userId = req.user!.id;
@@ -21,7 +21,7 @@ gateRouter.get("/home", requireRole("attendant"), async (req, res) => {
   if (!space) return res.status(403).json({ error: "This attendant account is no longer active" });
 
   const [inside, expected] = await Promise.all([
-    pool.query(`${VISIT_SELECT} WHERE v.space_id = $1 AND v.exit_at IS NULL ORDER BY v.entry_at DESC`, [space.id]),
+    pool.query(`${VISIT_SELECT} WHERE v.space_id = $1 AND v.exit_at IS NULL ORDER BY b.end_time, v.id`, [space.id]),
     pool.query(
       `SELECT b.id, b.qr_token, b.start_time, b.end_time, cu.username AS customer
        FROM bookings b
@@ -46,6 +46,7 @@ gateRouter.get("/home", requireRole("attendant"), async (req, res) => {
     },
     inside: inside.rows.map(toVisit),
     expected: expected.rows.map(({ id, ...booking }) => ({ ...booking, reference: bookingReference(id) })),
+    now: new Date().toISOString(),
   });
 });
 
