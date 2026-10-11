@@ -38,7 +38,7 @@ details.tool pre { max-height:320px; overflow:auto; color:var(--text); }
 </style></head>
 <body><main>
 <h1>ParkSpotZ chat history</h1>
-<p class="sub">1 session(s) &middot; exported 11 Oct 2026, 16:36</p>
+<p class="sub">1 session(s) &middot; exported 11 Oct 2026, 17:22</p>
 <h2 class="session">GitHub connection <small class="sub">started 11 Oct 2026, 08:20</small></h2>
 <div class="msg user"><div class="who">You<time>11 Oct 2026, 08:20</time></div><p>which github is this project connected to?</p></div>
 <details class="tool"><summary>Bash: List git remotes and branch tracking</summary><pre><code>git -C /Users/vasumac/Documents/vasu_iisc/parking-app remote -v; git -C /Users/vasumac/Documents/vasu_iisc/parking-app branch -vv</code></pre><pre><code>(Bash completed with no output)</code></pre></details>
@@ -5068,5 +5068,621 @@ Bias place search to Bangalore, frame the map on results, group rupee amounts
 
 Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;
 EOF
-)&quot; &amp;&amp; GIT_TERMINAL_PROMPT=0 git push 2&gt;&amp;1 | tail -1</code></pre></details>
+)&quot; &amp;&amp; GIT_TERMINAL_PROMPT=0 git push 2&gt;&amp;1 | tail -1</code></pre><pre><code>₹30  ₹500  ₹1,500  ₹16,500  ₹1,00,000  ₹1,234.50
+lint+types ok
+flagged: {&#x27;postgres://user:password@&#x27;, &#x27;postgres://&amp;lt;user&amp;gt;:&amp;lt;password&amp;gt;&#x27;}
+ M chat-history.html
+ M frontend/src/components/PlaceSearchBox.tsx
+ M frontend/src/components/ResultsMap.tsx
+ M frontend/src/lib/format.ts
+   fcaf2c6..3f6de89  main -&gt; main</code></pre></details>
+<details class="tool"><summary>Bash: Wait for Vercel to publish the new build and confirm it is live</summary><pre><code>W=https://parkspotz.vercel.app; for i in 1 2 3 4 5 6 7 8 9 10 11 12; do n=$(for u in $(curl -s -m 30 $W/ | grep -o &#x27;/_next/static/[^&quot;]*\.js&#x27; | sort -u); do curl -s -m 30 $W$u; done | grep -c &quot;locationBias&quot;); if [ &quot;$n&quot; -gt 0 ]; then echo &quot;live site has the new build (after ~$((i*20))s)&quot;; break; fi; sleep 20; done; echo &quot;locationBias in live scripts: $n&quot;; curl -s -m 30 -w &quot; [health %{http_code}]\n&quot; $W/api/health</code></pre><pre><code>live site has the new build (after ~40s)
+locationBias in live scripts: 1
+{&quot;status&quot;:&quot;ok&quot;,&quot;db&quot;:&quot;ok&quot;} [health 200]</code></pre></details>
+<div class="msg"><div class="who">Claude<time>11 Oct 2026, 16:37</time></div><p>All three are done: the Maps key restriction is confirmed, the spending alert is set, and the three fixes are live on https://parkspotz.vercel.app.</p>
+<h3>Maps key restriction: confirmed</h3>
+<p>I read the key's settings from Google Cloud and then tested the key itself from different addresses:</p>
+<div class="tablewrap"><table><tr><th>Request from</th><th>Result</th></tr><tr><td><code>https://parkspotz.vercel.app</code></td><td>Allowed</td></tr><tr><td><code>http://localhost:3000</code></td><td>Allowed</td></tr><tr><td>A different website</td><td>Blocked</td></tr><tr><td>A different <code>vercel.app</code> site</td><td>Blocked</td></tr><tr><td>No website at all</td><td>Blocked</td></tr></table></div>
+<p>The website restriction is exactly the two addresses I suggested. A stolen copy of the key won't work anywhere else.</p>
+<p>One part is looser than I recommended: the key is allowed for 32 Google Maps services, not just the two the app uses (Maps JavaScript API and Places API (New)). That's Google's default "Maps" selection. The website restriction already blocks outside use, so this is a minor tightening, not a hole. I can narrow it to the two for you if you'd like.</p>
+<h3>Spending alert: created</h3>
+<ul><li><strong>Budget:</strong> ₹1,000 a month on this Google Cloud project (your billing account is in rupees; that's roughly the US$10 I suggested).</li><li><strong>Emails:</strong> at 50%, 90% and 100% of that amount, sent to the billing account's administrators, which is your Google account.</li><li>It only warns; it doesn't stop or cap anything.</li></ul>
+<h3>The three fixes: live</h3>
+<ol><li><strong>Place search favours Bangalore.</strong> Typing "MG Road Metro Station" used to offer one in Kochi first; the top suggestions are now Bengaluru's MG Road.</li><li><strong>The map frames the results.</strong> It now zooms to the destination and the spaces found, so the pins are spread apart and readable. With no results it shows the whole search radius as before.</li><li><strong>Rupee amounts have separators,</strong> in the Indian style: ₹1,500, ₹16,500, ₹1,00,000.</li></ol>
+<p>I checked the place suggestions and the map on the local copy, and confirmed the new build is what the live site is serving. I didn't re-check the map on the live site itself.</p>
+<p>My first attempt at the map fix left the map blank, from a zoom setting that doesn't work with this map type. I removed that setting before committing, so it never went live.</p>
+<p>Pushed as <code>3f6de89</code>. The fixes were all in the website, so the API didn't need redeploying.</p>
+<h3>Still open</h3>
+<ul><li>Move <code>recovery-codes.txt</code> out of the project folder.</li><li>The other three rough edges: the destination box clearing after you pick a place, the top bar wrapping on a phone, and narrow owner and admin pages on desktop.</li><li>The hosting-cost view on your admin dashboard.</li><li>Your decisions on data retention, billing unlisted spaces, and overstay dates in stats.</li></ul></div>
+<div class="msg user"><div class="who">You<time>11 Oct 2026, 17:02</time></div><p>How can i get the link for the chat_history from the github</p></div>
+<div class="msg"><div class="who">Claude<time>11 Oct 2026, 17:02</time></div><p>The file is in your repository at this address:</p>
+<p><strong>https://github.com/svasudev79/parkspotz/blob/main/chat-history.html</strong></p>
+<p>To get there by clicking: open <a href="https://github.com/svasudev79/parkspotz">github.com/svasudev79/parkspotz</a> and click <code>chat-history.html</code> in the file list.</p>
+<h3>The catch: GitHub shows the code, not the page</h3>
+<p>That link displays the file's HTML source, because GitHub doesn't render HTML files. To read it as a formatted page, use one of these:</p>
+<p><strong>Option 1: download it.</strong> On the file's page, click the download button (the arrow icon at the top right of the file view), then open the downloaded file in your browser.</p>
+<p><strong>Option 2: turn on GitHub Pages</strong>, which gives you a proper shareable link:</p>
+<ol><li>In the repository, go to <strong>Settings → Pages</strong>.</li><li>Under <strong>Build and deployment</strong>, set <strong>Source</strong> to "Deploy from a branch".</li><li>Choose branch <code>main</code> and folder <code>/ (root)</code>, then <strong>Save</strong>.</li><li>After a minute or two, the chat history is at:</li></ol>
+<p><strong>https://svasudev79.github.io/parkspotz/chat-history.html</strong></p>
+<p>GitHub Pages is free for public repositories and updates by itself every time the file changes.</p>
+<h3>Things to know</h3>
+<ul><li><strong>It's public.</strong> Anyone with either link can read the whole conversation, including your email address and the terminal output. I scan it for keys and passwords before every commit, and none have been published.</li><li><strong>It's always one reply behind.</strong> I refresh the file each time I commit, and the export is taken before the reply that reports it.</li><li><strong>The copy on your Mac</strong> is the same file: <a href="chat-history.html">chat-history.html</a> in the project folder, which opens directly in a browser.</li></ul>
+<p>If you want the Pages link, I can't switch that setting on for you, since it's in your GitHub account settings; the four steps above take about a minute.</p></div>
+<div class="msg user"><div class="who">You<time>11 Oct 2026, 17:19</time></div><p>how do i prepare for an interview on basis of this work</p></div>
+<div class="msg"><div class="who">Claude<time>11 Oct 2026, 17:19</time></div><p>Prepare to explain this as a product you specified and directed, with AI doing most of the coding, and make sure you can defend every design decision in it. Interviewers will care less about how many features there are than about whether you understand why it works the way it does.</p>
+<h3>1. Be upfront about how it was built</h3>
+<p>The chat history is public in your repository, so anyone who looks will see the app was built with Claude. Say so first, then show what was yours:</p>
+<ul><li>You wrote the problem statement and spec.</li><li>You made the product calls: guest booking, the attendant role, overstay rules, tiered rental, test keys before live.</li><li>You made the cost and hosting trade-offs: Neon over Cloud SQL, Vercel plus Cloud Run.</li><li>You tested it and got it deployed, including debugging real problems (the GitHub token and email privacy errors, the Google Cloud install permissions).</li></ul>
+<p>"I directed an AI to build this and can explain all of it" is a strong position. Claiming you hand-wrote it and then failing a follow-up question is not.</p>
+<h3>2. Have a two-minute pitch</h3>
+<p>Cover, in order: the problem (parking discovery in Bangalore is fragmented, with no pre-booking), who uses it (customers, space owners, gate attendants, you as platform admin), what it does end to end, and that it's live. Then offer a demo; you have the site and a 3-minute video.</p>
+<h3>3. Know the architecture well enough to draw it</h3>
+<p>Practise sketching this from memory and explaining each arrow:</p>
+<ul><li>Browser → Next.js site on Vercel → Express API on Cloud Run → Postgres on Neon.</li><li>Razorpay for payments, Google Maps for search and the map, a storage bucket for entry photos.</li></ul>
+<p>Be ready for "why": why the site forwards API calls instead of the browser calling the API directly (login cookies on iPhones), why a relational database, why the API scales to zero.</p>
+<h3>4. The questions most likely to come up</h3>
+<p>These are the technically interesting parts. For each, read the code until you can explain it without notes:</p>
+<div class="tablewrap"><table><tr><th>Question</th><th>Where to look</th></tr><tr><td>How do you stop two people booking the last slot?</td><td><code>backend/src/routes/bookings.ts</code>: one transaction that locks the space row, recounts, then inserts</td></tr><tr><td>How is availability calculated for a time window?</td><td><code>backend/src/availability.ts</code>: overlapping bookings, with unpaid ones expiring after 10 minutes</td></tr><tr><td>How do you know a payment is real?</td><td><code>backend/src/payments.ts</code>: the server verifies Razorpay's signature; the price is computed on the server</td></tr><tr><td>How do logins and roles work?</td><td><code>backend/src/middleware/auth.ts</code>: signed cookie, role checks on every route</td></tr><tr><td>How does a guest own a booking with no account?</td><td><code>backend/src/routes/guest.ts</code>: an unguessable token in a signed cookie and in the receipt link</td></tr><tr><td>How is nearby search done?</td><td>Haversine distance in SQL, in <code>backend/src/routes/spaces.ts</code></td></tr><tr><td>How is overstay charged?</td><td>Grace period, then 30-minute blocks, computed on the server at exit</td></tr><tr><td>How did you test it?</td><td>42 automated API tests, especially the last-slot race</td></tr></table></div>
+<p>Run the app locally and step through one booking while reading the code. That's the fastest way to make it stick.</p>
+<h3>5. Know its weaknesses before they find them</h3>
+<p>Raising limitations yourself shows judgement. The honest list:</p>
+<ul><li>Guest phone numbers aren't verified (no OTP).</li><li>No payment webhook, so a payment is only confirmed when the customer's browser returns.</li><li>No cancellations or refunds; no overnight bookings.</li><li>Overstay is collected in cash or UPI at the gate, unverified.</li><li>No password reset or login rate limiting.</li><li>Personal data (number plates, photos, phone numbers) has no retention policy yet.</li><li>It runs on test payment keys and demo data.</li></ul>
+<p>For each, have one sentence on how you'd fix it. <code>README.md</code> has the full list under "Known limitations".</p>
+<h3>6. Prepare three stories</h3>
+<p>Interviewers remember specifics:</p>
+<ol><li><strong>A trade-off you made:</strong> Neon versus Cloud SQL, with the cost reasoning.</li><li><strong>Something that went wrong:</strong> the staged files that vanished from the working folder at the start, or the deployment permissions failures, and what you did.</li><li><strong>A product decision:</strong> why attendants see no revenue but do see one vehicle's overstay amount.</li></ol>
+<h3>7. Expect "what would you do next?"</h3>
+<p>Good answers: real payments with KYC, OTP for guests, a native mobile app (your Phase 2), ParkSpotZ-managed spaces, bike parking, and measuring actual usage before building more.</p>
+<h3>What I'd do this week</h3>
+<ol><li>Read the six backend files in the table above, top to bottom.</li><li>Explain the last-slot logic and payment verification aloud until it's fluent.</li><li>Run the automated tests and read two of them.</li><li>Do the demo three times against the live site so it's smooth.</li></ol>
+<p>I can write this up as an interview prep document in the project, with model answers to the likely questions and a diagram of the architecture, or run a mock interview here where I ask the questions and give feedback on your answers. Which would help more?</p></div>
+<div class="msg user"><div class="who">You<time>11 Oct 2026, 17:20</time></div><p>Yes write the interview prep document</p></div>
+<details class="tool"><summary>Bash: List backend source files and read the availability and booking logic</summary><pre><code>cd /Users/vasumac/Documents/vasu_iisc/parking-app/backend &amp;&amp; wc -l src/*.ts src/routes/*.ts src/middleware/*.ts test/*.ts schema.sql | tail -40; echo ----; cat src/availability.ts; echo ----; sed -n 1,140p src/bookingService.ts 2&gt;/dev/null || ls src</code></pre><pre><code>      57 src/app.ts
+      29 src/availability.ts
+     254 src/booking-service.ts
+      79 src/config.ts
+      18 src/db.ts
+     138 src/gate.ts
+      74 src/guest.ts
+      18 src/index.ts
+      41 src/overstay.ts
+      45 src/payments.ts
+      47 src/photos.ts
+     111 src/rental.ts
+      81 src/safety.ts
+      46 src/session.ts
+     106 src/spaces.ts
+      39 src/validation.ts
+     297 src/routes/admin.ts
+      83 src/routes/auth.ts
+      58 src/routes/bookings.ts
+      68 src/routes/gate.ts
+      97 src/routes/guest.ts
+     209 src/routes/owner.ts
+     151 src/routes/rental.ts
+     123 src/routes/spaces.ts
+      11 src/routes/verify.ts
+     221 src/routes/visits.ts
+      44 src/middleware/auth.ts
+     277 test/admin.test.ts
+     101 test/booking.test.ts
+     397 test/gate.test.ts
+     345 test/guest.test.ts
+     131 test/helpers.ts
+      62 test/safety.test.ts
+     174 schema.sql
+    4032 total
+----
+// SQL shared by search (and, later, booking) so both count slots the same way.
+
+// Condition on a bookings row aliased `b`: true when it still holds a slot.
+// Confirmed bookings always do; pending (unpaid) ones only while younger than
+// the hold duration, passed in minutes as the parameter at `holdParam`.
+export function holdsSlotSql(holdParam: string): string {
+  return `(b.status = &#x27;confirmed&#x27;
+    OR (b.status = &#x27;pending&#x27; AND b.created_at &gt; now() - make_interval(mins =&gt; ${holdParam}::int)))`;
+}
+
+// Number of bookings holding a slot in space `spaceExpr` that overlap the
+// window [startParam, endParam). Windows that only touch do not overlap.
+export function overlappingBookingsSql(spaceExpr: string, startParam: string, endParam: string, holdParam: string): string {
+  return `(SELECT count(*)::int FROM bookings b
+    WHERE b.space_id = ${spaceExpr}
+      AND b.start_time &lt; ${endParam}::timestamptz
+      AND b.end_time &gt; ${startParam}::timestamptz
+      AND ${holdsSlotSql(holdParam)})`;
+}
+
+// True when the window falls on one IST day inside the space&#x27;s opening hours.
+// `s` is the parking_spaces alias.
+export function withinOpeningHoursSql(startParam: string, endParam: string): string {
+  const start = `(${startParam}::timestamptz AT TIME ZONE &#x27;Asia/Kolkata&#x27;)`;
+  const end = `(${endParam}::timestamptz AT TIME ZONE &#x27;Asia/Kolkata&#x27;)`;
+  return `(${start}::date = ${end}::date
+    AND ${start}::time &gt;= s.open_time
+    AND ${end}::time &lt;= s.close_time)`;
+}
+----
+app.ts
+availability.ts
+booking-service.ts
+config.ts
+db.ts
+gate.ts
+guest.ts
+index.ts
+middleware
+overstay.ts
+payments.ts
+photos.ts
+rental.ts
+routes
+safety.ts
+scripts
+session.ts
+spaces.ts
+validation.ts</code></pre></details>
+<details class="tool"><summary>Bash: Read the booking service, payment verification, overstay rule and auth code</summary><pre><code>sed -n 1,200p src/booking-service.ts; echo -----; cat src/payments.ts src/overstay.ts src/middleware/auth.ts src/session.ts</code></pre><pre><code>// Creating, paying for and reading bookings. The same rules apply whether the
+// booking belongs to a logged-in customer or to a guest without an account.
+import { randomBytes } from &quot;node:crypto&quot;;
+import { holdsSlotSql, overlappingBookingsSql, withinOpeningHoursSql } from &quot;./availability&quot;;
+import { config } from &quot;./config&quot;;
+import { pool } from &quot;./db&quot;;
+import { createOrder, isValidRazorpaySignature } from &quot;./payments&quot;;
+
+const MIN_BOOKING_MS = 30 * 60 * 1000; // 30 minutes
+const MAX_BOOKING_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+export type Failure = { ok: false; status: number; error: string };
+const fail = (status: number, error: string): Failure =&gt; ({ ok: false, status, error });
+
+// Who a new booking is for.
+export type BookingOwner =
+  | { userId: number }
+  | { guest: { name: string; phone: string; ip: string | null } };
+
+// A booking with its space, plus whether an unpaid hold has run out.
+// $1 is always the hold duration in minutes.
+export const BOOKING_SELECT = `
+  SELECT b.id, b.user_id, b.space_id, b.start_time, b.end_time, b.amount, b.status,
+         b.qr_token, b.created_at, b.guest_name, b.guest_phone, b.access_token,
+         s.name AS space_name, s.address AS space_address,
+         (b.status = &#x27;pending&#x27; AND NOT ${holdsSlotSql(&quot;$1&quot;)}) AS is_expired,
+         b.created_at + make_interval(mins =&gt; $1::int) AS hold_expires_at,
+         (SELECT p.provider_order_id FROM payments p
+          WHERE p.booking_id = b.id ORDER BY p.id DESC LIMIT 1) AS order_id,
+         v.entry_at, v.exit_at, v.overstay_minutes, v.overstay_amount, v.overstay_settlement
+  FROM bookings b
+  JOIN parking_spaces s ON s.id = b.space_id
+  LEFT JOIN visits v ON v.booking_id = b.id`;
+
+// JSON for a booking, as its customer or guest sees it. The QR link is only
+// given out once the booking is paid. `forGuest` adds the guest&#x27;s own details
+// and the token their receipt link is built from.
+export function toBooking(row: Record&lt;string, unknown&gt;, forGuest = false) {
+  const {
+    qr_token, user_id: _userId, order_id: _orderId, guest_name, guest_phone, access_token,
+    entry_at, exit_at, overstay_minutes, overstay_amount, overstay_settlement,
+    ...rest
+  } = row;
+  return {
+    ...rest,
+    // Once the vehicle has left: when it came and went, and any overstay charge.
+    visit: exit_at
+      ? { entry_at, exit_at, overstay_minutes, overstay_amount: Number(overstay_amount), overstay_settlement }
+      : null,
+    amount: Number(row.amount),
+    reference: `PSZ-${String(row.id).padStart(6, &quot;0&quot;)}`,
+    verify_url: row.status === &quot;confirmed&quot; ? `${config.appBaseUrl}/verify/${qr_token}` : null,
+    ...(forGuest ? { guest_name, guest_phone, access_token } : {}),
+  };
+}
+
+// One booking matching `where` (written against BOOKING_SELECT; its own
+// parameters start at $2), or null.
+export async function findBooking(where: string, params: unknown[]) {
+  const { rows } = await pool.query(`${BOOKING_SELECT} WHERE ${where}`, [config.bookingHoldMinutes, ...params]);
+  return rows[0] ?? null;
+}
+
+function parseDate(value: unknown): Date | null {
+  if (typeof value !== &quot;string&quot;) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+// Holds a slot and starts a payment. The amount is always worked out here from
+// the space&#x27;s price. In one transaction the space row is locked, so two people
+// cannot both take the last slot.
+export async function createBooking(
+  body: Record&lt;string, unknown&gt; | undefined,
+  owner: BookingOwner
+): Promise&lt;{ ok: true; bookingId: number; orderId: string } | Failure&gt; {
+  const rawSpaceId = body?.space_id;
+  const spaceId = typeof rawSpaceId === &quot;number&quot; &amp;&amp; Number.isInteger(rawSpaceId) &amp;&amp; rawSpaceId &gt; 0 ? rawSpaceId : null;
+  const start = parseDate(body?.start);
+  const end = parseDate(body?.end);
+  if (!spaceId) return fail(400, &quot;space_id is required&quot;);
+  if (!start || !end) return fail(400, &quot;start and end must be valid date-times&quot;);
+  if (end &lt;= start) return fail(400, &quot;End time must be after start time&quot;);
+  if (start.getTime() &lt;= Date.now()) return fail(400, &quot;Start time must be in the future&quot;);
+  const durationMs = end.getTime() - start.getTime();
+  if (durationMs &lt; MIN_BOOKING_MS || durationMs &gt; MAX_BOOKING_MS) {
+    return fail(400, &quot;A booking must be between 30 minutes and 24 hours long&quot;);
+  }
+
+  const guest = &quot;guest&quot; in owner ? owner.guest : null;
+  let bookingId: number;
+  let amount: number;
+  const client = await pool.connect();
+  try {
+    await client.query(&quot;BEGIN&quot;);
+    const space = (
+      await client.query(
+        `SELECT s.id, s.is_active, s.total_slots, s.price_per_hour,
+                ${withinOpeningHoursSql(&quot;$2&quot;, &quot;$3&quot;)} AS is_open
+         FROM parking_spaces s WHERE s.id = $1 FOR UPDATE`,
+        [spaceId, start.toISOString(), end.toISOString()]
+      )
+    ).rows[0];
+
+    let problem: Failure | null = null;
+    if (!space || !space.is_active) problem = fail(404, &quot;Parking space not found&quot;);
+    else if (!space.is_open) problem = fail(400, &quot;The space is closed for some or all of that time&quot;);
+    else {
+      const { rows } = await client.query(
+        `SELECT ${overlappingBookingsSql(&quot;$1&quot;, &quot;$2&quot;, &quot;$3&quot;, &quot;$4&quot;)} AS taken`,
+        [spaceId, start.toISOString(), end.toISOString(), config.bookingHoldMinutes]
+      );
+      if (rows[0].taken &gt;= space.total_slots) problem = fail(409, &quot;No slots are free for that time&quot;);
+    }
+    if (problem) {
+      await client.query(&quot;ROLLBACK&quot;);
+      return problem;
+    }
+
+    amount = Math.round(Number(space.price_per_hour) * (durationMs / 3_600_000) * 100) / 100;
+    const inserted = await client.query(
+      `INSERT INTO bookings
+         (user_id, space_id, start_time, end_time, amount, status, qr_token,
+          guest_name, guest_phone, guest_ip, access_token)
+       VALUES ($1, $2, $3, $4, $5, &#x27;pending&#x27;, $6, $7, $8, $9, $10) RETURNING id`,
+      [
+        &quot;userId&quot; in owner ? owner.userId : null,
+        spaceId, start.toISOString(), end.toISOString(), amount,
+        randomBytes(24).toString(&quot;base64url&quot;),
+        guest?.name ?? null, guest?.phone ?? null, guest?.ip ?? null,
+        guest ? randomBytes(32).toString(&quot;base64url&quot;) : null,
+      ]
+    );
+    bookingId = inserted.rows[0].id;
+    await client.query(&quot;COMMIT&quot;);
+  } catch (err) {
+    await client.query(&quot;ROLLBACK&quot;);
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  // The slot is now held. Create the payment order outside the lock; if the
+  // provider is unreachable, release the slot again.
+  let orderId: string;
+  try {
+    orderId = await createOrder(`booking_${bookingId}`, amount);
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : &quot;Payment order failed&quot;);
+    await pool.query(&quot;UPDATE bookings SET status = &#x27;cancelled&#x27; WHERE id = $1&quot;, [bookingId]);
+    return fail(502, &quot;Could not start the payment. Please try again.&quot;);
+  }
+  await pool.query(
+    &quot;INSERT INTO payments (booking_id, provider_order_id, amount, status) VALUES ($1, $2, $3, &#x27;created&#x27;)&quot;,
+    [bookingId, orderId, amount]
+  );
+  return { ok: true, bookingId, orderId };
+}
+
+// Checks the payment for `booking` (a BOOKING_SELECT row the caller is allowed
+// to pay) and confirms it.
+//   mock mode:     { mock_payment_id }
+//   razorpay mode: { razorpay_order_id, razorpay_payment_id, razorpay_signature }
+// Confirming an already confirmed booking changes nothing.
+export async function confirmBooking(
+  booking: Record&lt;string, any&gt;,
+  body: Record&lt;string, unknown&gt; | undefined
+): Promise&lt;{ ok: true } | Failure&gt; {
+  if (booking.status === &quot;confirmed&quot;) return { ok: true };
+  if (booking.status === &quot;cancelled&quot;) return fail(409, &quot;This booking was cancelled&quot;);
+  if (booking.is_expired) return fail(409, &quot;This booking was not paid in time and has expired. Please book again.&quot;);
+
+  let paymentId: string;
+  if (config.paymentMode === &quot;mock&quot;) {
+    const mockId = body?.mock_payment_id;
+    if (typeof mockId !== &quot;string&quot; || !/^mock_pay_[A-Za-z0-9]{1,40}$/.test(mockId)) {
+      return fail(400, &quot;mock_payment_id is required&quot;);
+    }
+    paymentId = mockId;
+  } else {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body ?? {};
+    if (
+      typeof razorpay_order_id !== &quot;string&quot; ||
+      typeof razorpay_payment_id !== &quot;string&quot; ||
+      typeof razorpay_signature !== &quot;string&quot;
+    ) {
+      return fail(400, &quot;Payment details are missing&quot;);
+    }
+    if (
+      razorpay_order_id !== booking.order_id ||
+      !isValidRazorpaySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature)
+    ) {
+      return fail(400, &quot;Payment could not be verified&quot;);
+    }
+    paymentId = razorpay_payment_id;
+  }
+
+  // Confirm only if still pending and still inside the hold, so a booking
+  // cannot be confirmed twice or after its slot was released.
+  const client = await pool.connect();
+-----
+// Payment provider calls, used for bookings and for rental invoices.
+// Two modes share one flow:
+//   mock     — no provider; the in-app test screen reports pay or fail.
+//   razorpay — a Razorpay order is created here and Checkout runs in the browser.
+import { createHmac, randomBytes, timingSafeEqual } from &quot;node:crypto&quot;;
+import { config } from &quot;./config&quot;;
+
+// Creates the provider order for something to be paid and returns its id.
+// `receipt` is our own label for it, e.g. &quot;booking_12&quot; or &quot;rental_7&quot;.
+export async function createOrder(receipt: string, amountRupees: number): Promise&lt;string&gt; {
+  if (config.paymentMode === &quot;mock&quot;) return `mock_order_${randomBytes(9).toString(&quot;hex&quot;)}`;
+
+  const auth = Buffer.from(`${config.razorpayKeyId}:${config.razorpayKeySecret}`).toString(&quot;base64&quot;);
+  const res = await fetch(&quot;https://api.razorpay.com/v1/orders&quot;, {
+    method: &quot;POST&quot;,
+    headers: { Authorization: `Basic ${auth}`, &quot;Content-Type&quot;: &quot;application/json&quot; },
+    body: JSON.stringify({
+      amount: Math.round(amountRupees * 100), // Razorpay amounts are in paise
+      currency: &quot;INR&quot;,
+      receipt,
+    }),
+  });
+  if (!res.ok) throw new Error(`Razorpay order creation failed with status ${res.status}`);
+  const order = (await res.json()) as { id?: unknown };
+  if (typeof order.id !== &quot;string&quot;) throw new Error(&quot;Razorpay order response had no id&quot;);
+  return order.id;
+}
+
+// Razorpay signs &quot;&lt;order_id&gt;|&lt;payment_id&gt;&quot; with the key secret (HMAC-SHA256, hex).
+export function isValidRazorpaySignature(orderId: string, paymentId: string, signature: string): boolean {
+  const expected = createHmac(&quot;sha256&quot;, config.razorpayKeySecret).update(`${orderId}|${paymentId}`).digest(&quot;hex&quot;);
+  const given = Buffer.from(signature, &quot;utf8&quot;);
+  const wanted = Buffer.from(expected, &quot;utf8&quot;);
+  return given.length === wanted.length &amp;&amp; timingSafeEqual(given, wanted);
+}
+
+// What the browser needs to start paying for an order.
+export function paymentInfo(orderId: string | null) {
+  return {
+    mode: config.paymentMode,
+    order_id: orderId,
+    currency: &quot;INR&quot;,
+    ...(config.paymentMode === &quot;razorpay&quot; ? { key_id: config.razorpayKeyId } : {}),
+  };
+}
+// The overstay rule. A vehicle that leaves after its booked end time may owe
+// an extra charge, which the attendant collects at the gate.
+//
+//   late minutes = whole minutes between the booked end and now (server clock)
+//   up to OVERSTAY_GRACE_MINUTES late         -&gt; free
+//   later than that                           -&gt; billed from the booked end, in
+//       started blocks of OVERSTAY_BLOCK_MINUTES, each block costing
+//       price_per_hour x (block / 60) x OVERSTAY_RATE_PERCENT %
+//
+// With the defaults (10 min grace, 30 min blocks, 100 %) at 40 per hour:
+//   10 min late -&gt; 0, 11 min -&gt; 20, 30 min -&gt; 20, 31 min -&gt; 40, 50 min -&gt; 40.
+import { config } from &quot;./config&quot;;
+
+export const SETTLEMENTS = [&quot;cash&quot;, &quot;upi&quot;, &quot;waived&quot;] as const;
+export type Settlement = (typeof SETTLEMENTS)[number];
+
+// Price of one overstay block at a space.
+export function blockAmount(pricePerHour: number): number {
+  const amount = pricePerHour * (config.overstayBlockMinutes / 60) * (config.overstayRatePercent / 100);
+  return Math.round(amount * 100) / 100;
+}
+
+export function overstayAmount(lateMinutes: number, pricePerHour: number): number {
+  if (lateMinutes &lt;= config.overstayGraceMinutes) return 0;
+  const blocks = Math.ceil(lateMinutes / config.overstayBlockMinutes);
+  return Math.round(blocks * blockAmount(pricePerHour) * 100) / 100;
+}
+
+// The rule as numbers, sent with each visit so screens can explain the charge
+// and show a live estimate. The hourly price is public information.
+export function overstayRule(pricePerHour: number) {
+  return {
+    grace_minutes: config.overstayGraceMinutes,
+    block_minutes: config.overstayBlockMinutes,
+    block_amount: blockAmount(pricePerHour),
+    price_per_hour: pricePerHour,
+  };
+}
+
+// SQL: whole minutes from the end of booking `b` until now, never negative.
+export const LATE_MINUTES_SQL = &quot;GREATEST(floor(extract(epoch FROM now() - b.end_time) / 60), 0)::int&quot;;
+import type { NextFunction, Request, Response } from &quot;express&quot;;
+import { SESSION_COOKIE, verifySession, type Role, type SessionUser } from &quot;../session&quot;;
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: SessionUser;
+    }
+  }
+}
+
+// 401 unless the request carries a valid session cookie; sets req.user.
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const user = verifySession(req.cookies?.[SESSION_COOKIE]);
+  if (!user) return res.status(401).json({ error: &quot;Please log in&quot; });
+  req.user = user;
+  next();
+}
+
+// For public routes: anonymous visitors are let through (req.user stays
+// undefined); a logged-in user must have one of the listed roles.
+export function publicOr(...roles: Role[]) {
+  return (req: Request, res: Response, next: NextFunction) =&gt; {
+    const user = verifySession(req.cookies?.[SESSION_COOKIE]);
+    if (user &amp;&amp; !roles.includes(user.role)) {
+      return res.status(403).json({ error: &quot;You do not have access to this&quot; });
+    }
+    if (user) req.user = user;
+    next();
+  };
+}
+
+// 401 if not logged in, 403 if logged in with a role that is not listed.
+export function requireRole(...roles: Role[]) {
+  return (req: Request, res: Response, next: NextFunction) =&gt; {
+    requireAuth(req, res, () =&gt; {
+      if (!req.user || !roles.includes(req.user.role)) {
+        const message = roles.length === 1 ? `Only ${roles[0]}s can do this` : &quot;You do not have access to this&quot;;
+        return res.status(403).json({ error: message });
+      }
+      next();
+    });
+  };
+}
+import type { CookieOptions } from &quot;express&quot;;
+import jwt from &quot;jsonwebtoken&quot;;
+import { config } from &quot;./config&quot;;
+
+export type Role = &quot;customer&quot; | &quot;owner&quot; | &quot;attendant&quot; | &quot;admin&quot;;
+
+export interface SessionUser {
+  id: number;
+  username: string;
+  role: Role;
+}
+
+export const SESSION_COOKIE = &quot;parkspotz_session&quot;;
+const SESSION_DAYS = 7;
+
+export const sessionCookieOptions: CookieOptions = {
+  httpOnly: true,
+  sameSite: &quot;lax&quot;,
+  secure: config.isProduction,
+  path: &quot;/&quot;,
+  maxAge: SESSION_DAYS * 24 * 60 * 60 * 1000,
+};
+
+export function signSession(user: SessionUser): string {
+  return jwt.sign({ username: user.username, role: user.role }, config.jwtSecret, {
+    subject: String(user.id),
+    expiresIn: `${SESSION_DAYS}d`,
+    algorithm: &quot;HS256&quot;,
+  });
+}
+
+// Returns the user stored in a session token, or null if it is missing, expired or forged.
+export function verifySession(token: unknown): SessionUser | null {
+  if (typeof token !== &quot;string&quot; || !token) return null;
+  try {
+    const payload = jwt.verify(token, config.jwtSecret, { algorithms: [&quot;HS256&quot;] });
+    if (typeof payload === &quot;string&quot;) return null;
+    const id = Number(payload.sub);
+    const { username, role } = payload;
+    if (!Number.isInteger(id) || typeof username !== &quot;string&quot;) return null;
+    if (![&quot;customer&quot;, &quot;owner&quot;, &quot;attendant&quot;, &quot;admin&quot;].includes(role)) return null;
+    return { id, username, role };
+  } catch {
+    return null;
+  }
+}</code></pre></details>
+<details class="tool"><summary>Bash: Read the distance query, the confirm step and count the tests</summary><pre><code>grep -n -i &quot;haversine\|acos\|6371&quot; -B2 -A8 src/routes/spaces.ts src/spaces.ts | head -40; grep -n &quot;is_active&quot; src/gate.ts src/routes/auth.ts | head -5; grep -c &quot;^test(\|^  test(\|await t.test(\|^test\.\|test(\&quot;&quot; test/*.test.ts; sed -n 200,254p src/booking-service.ts</code></pre><pre><code>src/routes/spaces.ts-11-const EARTH_RADIUS_M = 6_371_000;
+src/routes/spaces.ts-12-
+src/routes/spaces.ts:13:// Great-circle (Haversine) distance in metres from ($1 lat, $2 lng) to space `s`.
+src/routes/spaces.ts-14-const DISTANCE_SQL = `(${EARTH_RADIUS_M} * 2 * asin(sqrt(
+src/routes/spaces.ts-15-    power(sin(radians(s.lat - $1) / 2), 2) +
+src/routes/spaces.ts-16-    cos(radians($1)) * cos(radians(s.lat)) * power(sin(radians(s.lng - $2) / 2), 2)
+src/routes/spaces.ts-17-  )))`;
+src/routes/spaces.ts-18-
+src/routes/spaces.ts-19-function parseDate(value: unknown): Date | null {
+src/routes/spaces.ts-20-  if (typeof value !== &quot;string&quot;) return null;
+src/routes/spaces.ts-21-  const date = new Date(value);
+src/gate.ts:15:    WHERE sa.user_id = ${userParam} AND sa.space_id = s.id AND su.is_active))`;
+src/routes/auth.ts:52:    &quot;SELECT id, username, role, password_hash, is_active FROM users WHERE username = $1&quot;,
+src/routes/auth.ts:57:  // A removed attendant (is_active = false) gets the same answer as a wrong password.
+src/routes/auth.ts:58:  if (!row || !matches || !row.is_active) {
+src/routes/auth.ts:78:  const { rows } = await pool.query(&quot;SELECT id, username, role FROM users WHERE id = $1 AND is_active&quot;, [
+test/admin.test.ts:10
+test/booking.test.ts:4
+test/safety.test.ts:5
+test/guest.test.ts:9
+test/gate.test.ts:14
+  const client = await pool.connect();
+  try {
+    await client.query(&quot;BEGIN&quot;);
+    const updated = await client.query(
+      `UPDATE bookings b SET status = &#x27;confirmed&#x27;
+       WHERE b.id = $1 AND b.status = &#x27;pending&#x27; AND ${holdsSlotSql(&quot;$2&quot;)}`,
+      [booking.id, config.bookingHoldMinutes]
+    );
+    if (updated.rowCount === 1) {
+      await client.query(
+        &quot;UPDATE payments SET status = &#x27;paid&#x27;, provider_payment_id = $2 WHERE booking_id = $1 AND provider_order_id = $3&quot;,
+        [booking.id, paymentId, booking.order_id]
+      );
+    }
+    await client.query(&quot;COMMIT&quot;);
+    if (updated.rowCount !== 1) {
+      const now = await pool.query(&quot;SELECT status FROM bookings WHERE id = $1&quot;, [booking.id]);
+      if (now.rows[0]?.status !== &quot;confirmed&quot;) return fail(409, &quot;This booking can no longer be confirmed&quot;);
+    }
+  } catch (err) {
+    await client.query(&quot;ROLLBACK&quot;);
+    throw err;
+  } finally {
+    client.release();
+  }
+  return { ok: true };
+}
+
+// The payment failed or was given up: record it and release the slot by
+// cancelling the pending booking.
+export async function failBooking(booking: Record&lt;string, any&gt;): Promise&lt;{ ok: true } | Failure&gt; {
+  if (booking.status === &quot;confirmed&quot;) return fail(409, &quot;This booking is already paid&quot;);
+  if (booking.status !== &quot;pending&quot;) return { ok: true };
+
+  const client = await pool.connect();
+  try {
+    await client.query(&quot;BEGIN&quot;);
+    const updated = await client.query(
+      &quot;UPDATE bookings SET status = &#x27;cancelled&#x27; WHERE id = $1 AND status = &#x27;pending&#x27;&quot;,
+      [booking.id]
+    );
+    if (updated.rowCount === 1) {
+      await client.query(&quot;UPDATE payments SET status = &#x27;failed&#x27; WHERE booking_id = $1 AND status = &#x27;created&#x27;&quot;, [
+        booking.id,
+      ]);
+    }
+    await client.query(&quot;COMMIT&quot;);
+  } catch (err) {
+    await client.query(&quot;ROLLBACK&quot;);
+    throw err;
+  } finally {
+    client.release();
+  }
+  return { ok: true };
+}</code></pre></details>
+<details class="tool"><summary>Write: /Users/vasumac/Documents/vasu_iisc/parking-app/Interview-prep.md</summary><pre><code>File created successfully at: /Users/vasumac/Documents/vasu_iisc/parking-app/Interview-prep.md (file state is current in your context — no need to Read it back)</code></pre></details>
+<details class="tool"><summary>Bash: Scan the chat export, then commit and push the interview prep guide</summary><pre><code>cd /Users/vasumac/Documents/vasu_iisc/parking-app &amp;&amp; git status --short &amp;&amp; python3 tools/export_chat.py &gt;/dev/null &amp;&amp; python3 -I -c &quot;
+import re;s=open(&#x27;chat-history.html&#x27;).read()
+hits=[m.group(0)[:40] for m in re.finditer(r&#x27;ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|rzp_(test|live)_[A-Za-z0-9]{8,}|AIza[0-9A-Za-z_-]{30,}|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}|postgres(ql)?://[^\s&lt;]+:[^\s&lt;@]+@|npg_[A-Za-z0-9]{6,}&#x27;,s)]
+print(&#x27;flagged:&#x27;,set(hits))&quot; &amp;&amp; git add Interview-prep.md chat-history.html &amp;&amp; git commit -q -m &quot;$(cat &lt;&lt;&#x27;EOF&#x27;
+Add interview prep guide
+
+Co-Authored-By: Claude Opus 5.5 &lt;noreply@anthropic.com&gt;
+EOF
+)&quot; &amp;&amp; GIT_TERMINAL_PROMPT=0 git push 2&gt;&amp;1 | tail -1; git status -sb</code></pre></details>
 </main></body></html>
