@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { loadGoogleMaps } from "@/lib/googleMaps";
-import type { Place } from "@/lib/landmarks";
+import { BANGALORE_CENTER, type Place } from "@/lib/landmarks";
 import { LandmarkPicker } from "./LandmarkPicker";
 
 // Google Places Autocomplete (the PlaceAutocompleteElement widget), limited to
-// India. Falls back to the landmark picker if Google Maps cannot be loaded.
+// India and biased towards Bangalore so local places come first. Falls back to the landmark picker if Google Maps cannot be loaded.
 export function PlaceSearchBox({ id, onPick }: { id?: string; onPick: (place: Place) => void }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const onPickRef = useRef(onPick);
@@ -23,7 +23,10 @@ export function PlaceSearchBox({ id, onPick }: { id?: string; onPick: (place: Pl
     loadGoogleMaps()
       .then(() => {
         if (cancelled || !hostRef.current) return;
-        element = new google.maps.places.PlaceAutocompleteElement({ includedRegionCodes: ["in"] });
+        element = new google.maps.places.PlaceAutocompleteElement({
+          includedRegionCodes: ["in"],
+          locationBias: { center: BANGALORE_CENTER, radius: 50_000 }, // 50 km is the largest bias allowed
+        });
         element.style.width = "100%";
         element.style.colorScheme = "light"; // the app has a light theme only
         element.setAttribute("placeholder", "Search for a place");

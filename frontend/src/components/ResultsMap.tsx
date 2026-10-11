@@ -5,6 +5,9 @@ import { loadGoogleMaps, PIN_ICONS } from "@/lib/googleMaps";
 import { BANGALORE_CENTER, type Place } from "@/lib/landmarks";
 import type { SearchResult } from "@/lib/types";
 
+// Never zoom in further than this automatically (street level).
+const MAX_AUTO_ZOOM = 17;
+
 // Google map for the search screen: a blue pin for the destination, a circle
 // for the search radius and one pin per parking space (green when selected).
 // Only rendered when a Maps key is set.
@@ -79,8 +82,16 @@ export function ResultsMap({
       fillOpacity: 0.06,
       clickable: false,
     });
-    const bounds = circle.getBounds();
-    if (bounds) map.fitBounds(bounds);
+    // Frame the destination and the spaces found (the whole radius when there
+    // are none), close enough that neighbouring pins can be told apart.
+    const frame = new google.maps.LatLngBounds();
+    frame.extend(center);
+    for (const space of results) frame.extend({ lat: space.lat, lng: space.lng });
+    const circleBounds = circle.getBounds();
+    map.fitBounds(results.length > 0 || !circleBounds ? frame : circleBounds, 36);
+    google.maps.event.addListenerOnce(map, "idle", () => {
+      if ((map.getZoom() ?? 0) > MAX_AUTO_ZOOM) map.setZoom(MAX_AUTO_ZOOM);
+    });
 
     const markers = markersRef.current;
     for (const space of results) {

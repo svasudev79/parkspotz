@@ -39,7 +39,9 @@ export function formatDistance(metres: number): string {
 }
 
 export function formatRupees(amount: number): string {
-  return `₹${Number.isInteger(amount) ? amount : amount.toFixed(2)}`;
+  // Indian digit grouping: ₹16,500 and ₹1,00,000.
+  const digits = Number.isInteger(amount) ? 0 : 2;
+  return `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
 }
 
 export function capitalize(word: string): string {
